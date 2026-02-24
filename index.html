@@ -51,111 +51,9 @@
   --sidebar-w: 340px;
 }
 
-/* ═══════════════════════════════════════
-   RESPONSIVE BREAKPOINTS
-═══════════════════════════════════════ */
-@media (min-width: 720px) {
-  body { background: var(--ink2); }
-  .screen { background: transparent; }
-  .auth-center { padding: 40px 24px; }
-  .g-card { max-width: 400px; padding: 36px 32px; }
-  
-  /* Desktop app shell - sidebar + chat split */
-  #app { background: transparent; }
-  .app-shell {
-    max-width: 100%;
-    flex-direction: row;
-    height: 100dvh;
-    background: transparent;
-    gap: 0;
-    margin: 0;
-  }
-
-  /* Sidebar */
-  .sidebar-panel {
-    width: var(--sidebar-w);
-    flex-shrink: 0;
-    flex: none;
-    border-right: 1px solid var(--rim2);
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
-    background: var(--glass2);
-    backdrop-filter: blur(24px);
-  }
-
-  .main-panel {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
-    background: var(--ink);
-    position: relative;
-    overflow: hidden;
-  }
-
-  /* In desktop mode, chat view is NOT fixed overlay — it's inline */
-  #chat-view {
-    position: relative !important;
-    inset: unset !important;
-    transform: none !important;
-    transition: none !important;
-    flex: 1;
-    display: none;
-    z-index: 1;
-  }
-  #chat-view.open { display: flex; transform: none !important; }
-  
-  /* No-chat placeholder */
-  .no-chat-ph {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    color: var(--t3);
-  }
-  .no-chat-ph.hide { display: none; }
-  .no-chat-glyph { font-size: 52px; opacity: 0.2; }
-  .no-chat-lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .2em; opacity: .4; text-transform: uppercase; }
-  
-  /* In desktop mode, tab pages fill the sidebar */
-  .tab-page { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-  
-  /* Hide back button on desktop */
-  .ch-back { display: none !important; }
-  
-  /* Chat header top padding same as topbar */
-  .chat-header { padding-top: 14px !important; }
-  
-  /* Wider modal */
-  .modal { max-width: 480px; border-radius: 20px !important; border-bottom: 1px solid var(--rim) !important; }
-  .modal-bg { align-items: center !important; }
-  
-  /* Toast position */
-  #toast { bottom: 24px; }
-  
-  /* Top bar width constrained to sidebar */
-  .top-bar { border-bottom: 1px solid var(--rim2); }
-}
-
-@media (min-width: 1100px) {
-  :root { --sidebar-w: 380px; }
-}
-
-@media (min-width: 1400px) {
-  :root { --sidebar-w: 420px; }
-}
-
-/* Tablet: compact desktop mode */
-@media (min-width: 720px) and (max-width: 1023px) {
-  :root { --sidebar-w: 300px; }
-}
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html { height: 100%; -webkit-text-size-adjust: 100%; }
-body { height: 100dvh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: 'Outfit', sans-serif; font-size: 15px; line-height: 1.5; }
+body { height: 100dvh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: 'Outfit', sans-serif; font-size: clamp(13px,1.5vw,15px); line-height: 1.5; }
 
 /* Scanlines */
 body::after { content: ''; position: fixed; inset: 0; z-index: 9998; background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,229,204,0.008) 3px, rgba(0,229,204,0.008) 6px); pointer-events: none; }
@@ -195,7 +93,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 9998; background:
 }
 @keyframes gridFall { from { transform: translateY(0); } to { transform: translateY(44px); } }
 
-.auth-center { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; padding: 24px 20px; overflow-y: auto; gap: 0; }
+.auth-center { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100dvh; padding: clamp(16px,5vw,32px) clamp(14px,4vw,24px); overflow-y: auto; gap: 0; padding-top: clamp(32px,8vh,72px); }
 
 .brand { text-align: center; margin-bottom: 36px; }
 .brand-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(38px,11vw,52px); letter-spacing: 0.12em; color: var(--c); text-shadow: 0 0 40px var(--c-glow), 0 0 100px rgba(0,229,204,0.15); animation: brandPulse 4s ease-in-out infinite; }
@@ -203,7 +101,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 9998; background:
 .brand-sub { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.35em; color: var(--t3); margin-top: 6px; text-transform: uppercase; }
 
 /* GLASS CARD */
-.g-card { width: 100%; max-width: 360px; background: var(--glass); border: 1px solid var(--rim); border-radius: 20px; padding: 28px 24px; position: relative; overflow: hidden; backdrop-filter: blur(24px); box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.06); }
+.g-card { width: 100%; max-width: min(92vw, 380px); background: var(--glass); border: 1px solid var(--rim); border-radius: 20px; padding: clamp(20px,5vw,32px) clamp(16px,4vw,28px); position: relative; overflow: hidden; backdrop-filter: blur(24px); box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.06); }
 .g-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent 0%, var(--c) 30%, var(--m) 70%, transparent 100%); opacity: 0.5; }
 
 /* STEPS */
@@ -270,15 +168,101 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 9998; background:
 .auth-link span { color: var(--c); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
 /* ═══════════════════════════════════════
-   MAIN APP
+   MAIN APP — MOBILE FIRST
 ═══════════════════════════════════════ */
 #app { background: var(--ink); }
 
-.app-shell { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100dvh; max-width: 430px; margin: 0 auto; }
+/* Mobile: full-screen single column */
+.app-shell {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: row;
+  width: 100%; height: 100dvh;
+  overflow: hidden;
+}
 
-/* Sidebar panel — mobile: full-width (hidden by app-shell constraint), desktop: fixed width */
-.sidebar-panel { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.sidebar-panel {
+  display: flex; flex-direction: column;
+  width: 100%; flex-shrink: 0;
+  height: 100dvh; overflow: hidden;
+  background: var(--ink);
+}
+
+/* main-panel hidden on mobile — chat-view is fixed overlay */
 .main-panel { display: none; }
+
+/* No-chat placeholder — desktop only */
+.no-chat-ph {
+  display: none;
+}
+
+/* ── DESKTOP / TABLET LAYOUT ── */
+@media (min-width: 700px) {
+  body { background: var(--ink2); }
+
+  .app-shell { flex-direction: row; }
+
+  .sidebar-panel {
+    width: clamp(280px, 35vw, 420px);
+    flex-shrink: 0;
+    border-right: 1px solid var(--rim2);
+    background: var(--glass2);
+    backdrop-filter: blur(24px);
+  }
+
+  .main-panel {
+    display: flex; flex-direction: column;
+    flex: 1; height: 100dvh;
+    background: var(--ink); overflow: hidden;
+    position: relative;
+  }
+
+  /* On desktop chat-view sits inside main-panel, not fixed overlay */
+  #chat-view {
+    position: relative !important;
+    inset: auto !important;
+    transform: none !important;
+    transition: none !important;
+    flex: 1; flex-direction: column;
+    display: none;
+    background: var(--ink);
+    overflow: hidden;
+    height: 100%;
+  }
+  #chat-view.open { display: flex; }
+
+  /* No-chat placeholder */
+  .no-chat-ph {
+    display: flex; flex: 1;
+    flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; color: var(--t3);
+    height: 100%;
+  }
+  .no-chat-ph.hide { display: none; }
+
+  /* Hide mobile back button */
+  .ch-back { display: none !important; }
+
+  /* Chat header no extra top padding on desktop */
+  .chat-header { padding-top: 14px !important; }
+
+  /* Modals center on desktop */
+  .modal-bg { align-items: center !important; }
+  .modal {
+    max-width: 480px;
+    border-radius: 20px !important;
+    border-bottom: 1px solid var(--rim) !important;
+    animation: mfadeUp 0.22s ease !important;
+  }
+  @keyframes mfadeUp { from{opacity:0;transform:scale(0.96) translateY(8px)} to{opacity:1;transform:none} }
+
+  /* Top bar keeps its border */
+  .top-bar { border-bottom: 1px solid var(--rim2); }
+
+  /* Toast at bottom left on desktop */
+  #toast { bottom: 24px; left: calc(clamp(280px,35vw,420px) + 24px); transform: translateX(0) translateY(14px); }
+  #toast.show { transform: translateX(0) translateY(0); }
+}
 
 /* TOP STATUS BAR */
 .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px; padding-top: max(14px, env(safe-area-inset-top)); flex-shrink: 0; }
@@ -470,7 +454,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 9998; background:
 /* ═══════════════════════════════════════
    DROPDOWN MENU
 ═══════════════════════════════════════ */
-.dd { position: absolute; right: 12px; top: calc(var(--topbar-h) + 4px); z-index: 300; min-width: 185px; background: var(--glass2); border: 1px solid rgba(0,229,204,0.2); border-radius: 14px; overflow: hidden; backdrop-filter: blur(28px); box-shadow: var(--shadow), 0 0 30px rgba(0,0,0,0.3); animation: ddSlide 0.15s ease-out; }
+.dd { position: absolute; right: 12px; top: 100%; z-index: 300; min-width: 185px; background: var(--glass2); border: 1px solid rgba(0,229,204,0.2); border-radius: 14px; overflow: hidden; backdrop-filter: blur(28px); box-shadow: var(--shadow), 0 0 30px rgba(0,0,0,0.3); animation: ddSlide 0.15s ease-out; margin-top: 4px; }
 @keyframes ddSlide { from { opacity:0; transform:scale(0.95) translateY(-6px); } to { opacity:1; transform:none; } }
 .dd-item { display: flex; align-items: center; gap: 11px; padding: 12px 16px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--t1); transition: background 0.12s; border-bottom: 1px solid var(--rim2); }
 .dd-item:last-child { border-bottom: none; }
@@ -517,8 +501,8 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 9998; background:
 .prof-scroll::-webkit-scrollbar { display:none; }
 
 /* Profile hero */
-.prof-hero { background: var(--glass); border: 1px solid var(--rim); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative; overflow: hidden; }
-.prof-hero::before { content:''; position:absolute; top:0;left:0;right:0; height:1px; background: linear-gradient(90deg, transparent, var(--c), transparent); opacity:0.5; }
+.prof-hero { background: var(--glass); border: 1px solid var(--rim); border-radius: 20px; padding: clamp(16px,3vw,24px); display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative; }
+.prof-hero::before { content:''; position:absolute; top:0;left:0;right:0; height:1px; background: linear-gradient(90deg, transparent, var(--c), transparent); opacity:0.5; border-radius: 20px 20px 0 0; }
 .prof-big-av { width: 82px; height: 82px; border-radius: 50%; background: var(--ink3); border: 2px solid rgba(0,229,204,0.3); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 30px; color: var(--c); overflow: hidden; cursor: pointer; transition: border-color 0.3s, box-shadow 0.3s; box-shadow: 0 0 24px rgba(0,229,204,0.1), 0 0 0 4px rgba(0,229,204,0.06); }
 .prof-big-av:active { border-color: var(--c); box-shadow: 0 0 30px rgba(0,229,204,0.25), 0 0 0 6px rgba(0,229,204,0.1); }
 .prof-big-av img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
@@ -546,20 +530,25 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 9998; background:
 .sett-body { flex: 1; min-width: 0; }
 .sett-lbl { font-size: 13.5px; font-weight: 500; color: var(--t1); }
 .sett-sub { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); margin-top: 2px; }
-.sett-right { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--t3); flex-shrink: 0; }
+.sett-right { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--t3); flex-shrink: 0; max-width: 55%; min-width: 0; overflow: hidden; }
 .sett-chev { color: var(--t3); opacity: 0.5; }
 
 /* EDIT FIELD */
-.edit-inp { background: rgba(0,229,204,0.05); border: none; border-bottom: 1px solid rgba(0,229,204,0.2); color: var(--c); font-family: 'Outfit', sans-serif; font-size: 13px; outline: none; width: 130px; padding: 2px 4px; caret-color: var(--c); text-align: right; }
-.save-mini { font-family: 'JetBrains Mono', monospace; font-size: 8px; background: rgba(0,229,204,0.1); border: 1px solid rgba(0,229,204,0.25); border-radius: 5px; color: var(--c); padding: 3px 8px; cursor: pointer; letter-spacing: 0.08em; transition: background 0.2s; }
+.edit-inp { background: rgba(0,229,204,0.05); border: none; border-bottom: 1px solid rgba(0,229,204,0.2); color: var(--c); font-family: 'Outfit', sans-serif; font-size: 13px; outline: none; width: clamp(80px,20vw,130px); padding: 2px 4px; caret-color: var(--c); text-align: right; min-width: 0; }
+.save-mini { font-family: 'JetBrains Mono', monospace; font-size: 8px; background: rgba(0,229,204,0.1); border: 1px solid rgba(0,229,204,0.25); border-radius: 5px; color: var(--c); padding: 3px 8px; cursor: pointer; letter-spacing: 0.08em; transition: background 0.2s; white-space: nowrap; flex-shrink: 0; }
 .save-mini:active { background: rgba(0,229,204,0.22); }
+
+/* NO-CHAT PLACEHOLDER */
+.no-chat-glyph { font-size: 52px; opacity: 0.15; line-height: 1; }
+.no-chat-lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .2em; opacity: .35; text-transform: uppercase; }
+.no-chat-hint { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); letter-spacing: .08em; opacity: .4; margin-top: 4px; text-align: center; line-height: 1.7; }
 
 /* ═══════════════════════════════════════
    MODALS
 ═══════════════════════════════════════ */
 .modal-bg { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; align-items: flex-end; justify-content: center; animation: mfade 0.2s ease; }
 @keyframes mfade { from{opacity:0} to{opacity:1} }
-.modal { width: 100%; max-width: 430px; background: var(--glass2); border: 1px solid var(--rim); border-bottom: none; border-radius: 22px 22px 0 0; padding: 22px 20px max(24px, env(safe-area-inset-bottom)); box-shadow: var(--shadow); animation: mslide 0.25s cubic-bezier(.4,0,.2,1); }
+.modal { width: 100%; max-width: 100%; background: var(--glass2); border: 1px solid var(--rim); border-bottom: none; border-radius: 22px 22px 0 0; padding: 22px clamp(16px,4vw,24px) max(24px, env(safe-area-inset-bottom)); box-shadow: var(--shadow); animation: mslide 0.25s cubic-bezier(.4,0,.2,1); }
 @keyframes mslide { from{transform:translateY(100%)} to{transform:translateY(0)} }
 .modal::before { content:''; display:block; width:36px; height:3px; background:rgba(255,255,255,0.12); border-radius:2px; margin:0 auto 18px; }
 .modal-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--t1); margin-bottom: 6px; }
@@ -868,6 +857,7 @@ body::after { content: ''; position: fixed; inset: 0; z-index: 9998; background:
     <div class="no-chat-ph" id="no-chat-ph">
       <div class="no-chat-glyph">◈</div>
       <div class="no-chat-lbl">Select a conversation</div>
+      <div class="no-chat-hint">Click a contact to open chat<br>or add a new connection by Z-ID</div>
     </div>
 
 <!-- ════════════════════════════════════
@@ -1326,6 +1316,8 @@ function openChat(zid) {
 
   document.getElementById('chat-view').classList.add('open');
   document.getElementById('chat-dd').classList.add('hide');
+
+  // Desktop: hide placeholder
   const ph = document.getElementById('no-chat-ph');
   if (ph) ph.classList.add('hide');
 
@@ -1339,6 +1331,7 @@ function closeChat() {
   document.getElementById('chat-view').classList.remove('open');
   document.getElementById('chat-dd').classList.add('hide');
   activeZid = null;
+  // Show placeholder on desktop
   const ph = document.getElementById('no-chat-ph');
   if (ph) ph.classList.remove('hide');
   renderCList();
