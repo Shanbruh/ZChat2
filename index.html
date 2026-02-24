@@ -1,453 +1,480 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="midnight">
+<html lang="en" class="theme-midnight">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexus X | v2.0</title>
+    <meta name="theme-color" id="theme-meta" content="#0f172a">
+    <title>Nexus X | Secure P2P</title>
     
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* Theme Definitions */
-        [data-theme="midnight"] {
-            --accent: #6366f1;
-            --accent-glow: rgba(99, 102, 241, 0.3);
-            --bg: #0f172a;
-            --panel: rgba(30, 41, 59, 0.5);
-        }
-        [data-theme="emerald"] {
-            --accent: #10b981;
-            --accent-glow: rgba(16, 185, 129, 0.3);
-            --bg: #064e3b;
-            --panel: rgba(6, 78, 59, 0.5);
-        }
-        [data-theme="crimson"] {
-            --accent: #ef4444;
-            --accent-glow: rgba(239, 68, 68, 0.3);
-            --bg: #450a0a;
-            --panel: rgba(127, 29, 29, 0.5);
-        }
+        /* Theme Variables */
+        .theme-midnight { --accent: #6366f1; --bg: #0f172a; --panel: rgba(30, 41, 59, 0.6); --text: #f1f5f9; }
+        .theme-neon { --accent: #00f2ff; --bg: #050505; --panel: rgba(20, 20, 20, 0.8); --text: #00f2ff; }
+        .theme-rose { --accent: #fb7185; --bg: #2d0b13; --panel: rgba(76, 15, 29, 0.5); --text: #fff1f2; }
 
         body {
             background-color: var(--bg);
-            color: #f1f5f9;
-            font-family: 'Inter', sans-serif;
-            transition: all 0.5s ease;
+            color: var(--text);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             height: 100dvh;
-            overflow: hidden;
+            transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .glass { background: var(--panel); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
-        .accent-text { color: var(--accent); }
-        .accent-bg { background: var(--accent); }
-        .accent-border { border-color: var(--accent); }
-        
-        /* Message Types */
-        .msg-log { background: rgba(0,0,0,0.3); border-radius: 12px; font-size: 0.75rem; color: #94a3b8; border: 1px dashed rgba(255,255,255,0.1); }
-        .msg-sent { background: var(--accent); box-shadow: 0 4px 15px var(--accent-glow); }
-        .msg-received { background: rgba(255,255,255,0.1); }
+        .glass {
+            background: var(--panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-        input:focus { border-color: var(--accent) !important; outline: none; }
+        .accent-bg { background-color: var(--accent); }
+        .accent-text { color: var(--accent); }
+        .accent-border { border-color: var(--accent); }
+
+        /* Component Enhancements */
+        .msg-bubble { max-width: 75%; padding: 12px 16px; border-radius: 20px; font-size: 0.95rem; line-height: 1.5; }
+        .msg-sent { background: var(--accent); color: white; border-bottom-right-radius: 4px; box-shadow: 0 4px 15px -3px var(--accent); }
+        .msg-received { background: rgba(255,255,255,0.08); border-bottom-left-radius: 4px; }
         
-        .avatar-ring { border: 2px solid var(--accent); padding: 2px; border-radius: 50%; }
+        .system-log { 
+            align-self: center; background: rgba(0,0,0,0.2); 
+            padding: 4px 12px; border-radius: 10px; font-size: 0.7rem; 
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6;
+            margin: 10px 0; border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .nav-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 14px; transition: all 0.2s; }
+        .nav-btn:hover { background: rgba(255,255,255,0.1); transform: translateY(-1px); }
+
+        /* Layout Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        .view-animate { animation: fadeIn 0.3s ease-out forwards; }
         
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .animate-slide { animation: slideUp 0.4s ease forwards; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
     </style>
 </head>
 <body class="flex items-center justify-center">
 
-    <!-- Auth Layer -->
-    <div id="authContainer" class="fixed inset-0 z-[100] flex items-center justify-center bg-[#000000e0] backdrop-blur-xl">
-        <div class="glass p-8 rounded-[2rem] w-full max-w-sm shadow-2xl animate-slide">
-            <div class="mb-8 text-center">
-                <div class="w-16 h-16 accent-bg rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <i class="fas fa-fingerprint text-white text-2xl"></i>
-                </div>
-                <h1 class="text-3xl font-black">NEXUS X</h1>
-                <p class="text-slate-400 text-xs mt-1">SECURE P2P NODE ACCESS</p>
+    <!-- Auth Module: Password + ID -->
+    <div id="authOverlay" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl">
+        <div class="glass p-10 rounded-[2.5rem] w-full max-w-sm text-center view-animate">
+            <div class="w-20 h-20 accent-bg rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
+                <i class="fas fa-microchip text-3xl text-white"></i>
             </div>
+            <h1 class="text-3xl font-black tracking-tighter mb-2">NEXUS<span class="opacity-50 italic">X</span></h1>
+            <p class="text-slate-500 text-xs mb-8 uppercase tracking-widest font-bold">Secure Node Authentication</p>
 
             <div id="loginForm" class="space-y-4">
-                <input type="text" id="loginId" placeholder="Nexus ID" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3">
-                <input type="password" id="loginPass" placeholder="Access Lock (Password)" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3">
-                <button onclick="attemptLogin()" class="w-full accent-bg text-white font-bold py-4 rounded-xl shadow-lg">AUTHENTICATE</button>
-                <p class="text-center text-xs text-slate-500">First time? <button onclick="toggleAuth(false)" class="accent-text font-bold">Register Node</button></p>
+                <input type="text" id="nodeIdLogin" placeholder="Node ID" class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:accent-border transition-all">
+                <input type="password" id="nodePassLogin" placeholder="Vault Key" class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:accent-border transition-all">
+                <button onclick="vaultLogin()" class="w-full accent-bg text-white font-black py-4 rounded-2xl shadow-xl hover:opacity-90 transition-all">DECRYPT SESSION</button>
+                <p class="text-xs text-slate-500 mt-4">Node not found? <button onclick="toggleAuth(false)" class="accent-text font-bold">Register Alias</button></p>
             </div>
 
-            <div id="registerForm" class="hidden space-y-4">
-                <input type="text" id="regName" placeholder="Display Name" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3">
-                <input type="text" id="regId" placeholder="Choose Unique Nexus ID" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3">
-                <input type="password" id="regPass" placeholder="Create Access Lock" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3">
-                <button onclick="attemptRegister()" class="w-full accent-bg text-white font-bold py-4 rounded-xl shadow-lg">REGISTER NODE</button>
-                <p class="text-center text-xs text-slate-500">Known node? <button onclick="toggleAuth(true)" class="accent-text font-bold">Login</button></p>
+            <div id="regForm" class="hidden space-y-4">
+                <input type="text" id="regName" placeholder="Display Name" class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:accent-border">
+                <input type="text" id="regId" placeholder="Desired Node ID" class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:accent-border">
+                <input type="password" id="regPass" placeholder="Vault Key (Password)" class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 focus:outline-none focus:accent-border">
+                <button onclick="vaultRegister()" class="w-full accent-bg text-white font-black py-4 rounded-2xl shadow-xl">GENERATE NODE</button>
+                <p class="text-xs text-slate-500 mt-4">Known node? <button onclick="toggleAuth(true)" class="accent-text font-bold">Sign In</button></p>
             </div>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div id="mainApp" class="hidden w-full h-full p-0 sm:p-4 md:p-6 flex gap-6 max-w-7xl">
+    <!-- Main Application UI -->
+    <div id="nexusApp" class="hidden w-full h-full p-2 sm:p-6 flex gap-6 max-w-7xl view-animate">
         
-        <!-- Sidebar -->
-        <aside id="sidebar" class="glass w-full sm:w-80 rounded-[2.5rem] flex flex-col overflow-hidden transition-all duration-300">
-            <!-- User Profile Section -->
-            <div class="p-6 border-b border-white/5">
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="avatar-ring relative group cursor-pointer" onclick="openProfileSettings()">
-                        <div id="myAvatar" class="w-12 h-12 rounded-full accent-bg flex items-center justify-center font-black text-xl">?</div>
-                        <div class="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i class="fas fa-edit text-xs"></i>
-                        </div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h2 id="myName" class="font-bold truncate">---</h2>
-                        <p id="myNodeId" class="text-[10px] accent-text font-black tracking-tighter uppercase"></p>
-                    </div>
-                    <button onclick="logout()" class="text-slate-500 hover:text-red-500 transition-colors"><i class="fas fa-power-off"></i></button>
-                </div>
-                
-                <div class="flex gap-2">
-                    <button onclick="changeTheme('midnight')" class="flex-1 h-2 rounded bg-indigo-500 border border-white/20"></button>
-                    <button onclick="changeTheme('emerald')" class="flex-1 h-2 rounded bg-emerald-500 border border-white/20"></button>
-                    <button onclick="changeTheme('crimson')" class="flex-1 h-2 rounded bg-red-500 border border-white/20"></button>
-                </div>
-            </div>
-
-            <div class="p-6 flex-1 flex flex-col min-h-0">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Channels</h3>
-                    <button onclick="addContact()" class="w-6 h-6 rounded-lg accent-bg flex items-center justify-center"><i class="fas fa-plus text-[10px]"></i></button>
-                </div>
-                <div id="contactList" class="flex-1 overflow-y-auto space-y-2 pr-2">
-                    <!-- Contacts go here -->
-                </div>
+        <!-- Sidebar Navigation -->
+        <aside class="glass w-20 rounded-[2rem] flex flex-col items-center py-8 gap-6 hidden md:flex">
+            <div class="accent-text text-2xl mb-4"><i class="fas fa-atom"></i></div>
+            <button onclick="setView('chats')" class="nav-btn accent-text bg-white/5"><i class="fas fa-comment-alt"></i></button>
+            <button onclick="setView('profile')" class="nav-btn text-slate-500 hover:text-white"><i class="fas fa-user-edit"></i></button>
+            <div class="mt-auto flex flex-col gap-4">
+                <button onclick="cycleTheme()" class="nav-btn text-slate-500"><i class="fas fa-palette"></i></button>
+                <button onclick="terminateSession()" class="nav-btn text-red-500"><i class="fas fa-power-off"></i></button>
             </div>
         </aside>
 
-        <!-- Chat Main -->
-        <main id="chatMain" class="hidden sm:flex glass flex-1 rounded-[2.5rem] flex-col overflow-hidden relative">
-            <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/20 backdrop-blur-sm">
-                <i class="fas fa-shield-alt text-4xl mb-4 opacity-10"></i>
-                <p class="text-slate-500 text-sm font-medium">NO ACTIVE ENCRYPTION STREAM</p>
-            </div>
-
-            <header class="p-6 flex items-center justify-between border-b border-white/5">
-                <div class="flex items-center gap-4">
-                    <button onclick="toggleMobileSidebar(true)" class="sm:hidden text-slate-400"><i class="fas fa-bars"></i></button>
-                    <div id="activeAvatar" class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black accent-text text-xl border border-white/10">?</div>
-                    <div>
-                        <h2 id="activeName" class="font-bold">Unknown Node</h2>
-                        <div class="flex items-center gap-2">
-                            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">P2P Secure Link</span>
-                        </div>
+        <!-- Main Panel (Contacts + Chat) -->
+        <div class="flex-1 flex gap-6">
+            <!-- Sidebar Drawer (Contacts) -->
+            <div id="contactPanel" class="glass w-full sm:w-80 rounded-[2rem] flex flex-col overflow-hidden">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-black">STREAMS</h2>
+                        <button onclick="linkNewNode()" class="w-8 h-8 rounded-xl accent-bg flex items-center justify-center text-white"><i class="fas fa-plus text-xs"></i></button>
+                    </div>
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                        <input type="text" placeholder="Search decrypted..." class="w-full bg-white/5 rounded-xl py-2.5 pl-10 pr-4 text-xs focus:outline-none">
                     </div>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="startCall(false)" class="w-11 h-11 rounded-2xl hover:bg-white/5 flex items-center justify-center transition-all"><i class="fas fa-phone-alt"></i></button>
-                    <button onclick="startCall(true)" class="w-11 h-11 rounded-2xl hover:bg-white/5 flex items-center justify-center transition-all"><i class="fas fa-video"></i></button>
+                
+                <div id="contactList" class="flex-1 overflow-y-auto px-4 space-y-2 custom-scroll">
+                    <!-- Dynamic -->
                 </div>
-            </header>
 
-            <div id="chatFeed" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scroll">
-                <!-- Messages JS Inject -->
+                <!-- Active Profile Bottom Bar -->
+                <div class="p-4 bg-white/5 mt-auto flex items-center gap-3">
+                    <div id="userAvatar" class="w-10 h-10 rounded-xl accent-bg flex items-center justify-center font-black text-white">?</div>
+                    <div class="flex-1 min-w-0">
+                        <p id="userName" class="text-xs font-black truncate">---</p>
+                        <p id="userId" class="text-[9px] opacity-40 font-mono"></p>
+                    </div>
+                </div>
             </div>
 
-            <footer class="p-6">
-                <div class="glass rounded-[1.5rem] p-2 flex items-center gap-3">
-                    <button onclick="document.getElementById('fileIn').click()" class="w-10 h-10 text-slate-400 hover:text-white"><i class="fas fa-paperclip"></i></button>
-                    <input type="file" id="fileIn" class="hidden" onchange="fileSent(this)">
-                    <input type="text" id="chatInput" placeholder="Write to Node..." class="flex-1 bg-transparent px-2 border-none text-sm">
-                    <button onclick="sendText()" class="w-10 h-10 accent-bg rounded-xl flex items-center justify-center shadow-lg"><i class="fas fa-paper-plane text-xs"></i></button>
+            <!-- Chat Main -->
+            <main id="chatMain" class="hidden sm:flex glass flex-1 rounded-[2rem] flex-col overflow-hidden relative">
+                <div id="emptyView" class="absolute inset-0 z-10 bg-slate-900/40 backdrop-blur-md flex flex-col items-center justify-center">
+                    <div class="w-20 h-20 rounded-full border border-white/10 flex items-center justify-center mb-4 text-white/10">
+                        <i class="fas fa-fingerprint text-4xl"></i>
+                    </div>
+                    <p class="text-[10px] font-black tracking-[0.3em] text-slate-500 uppercase">Awaiting Connection</p>
                 </div>
-            </footer>
-        </main>
+
+                <!-- Chat Header -->
+                <header class="p-6 border-b border-white/5 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <button onclick="toggleMobileSidebar(false)" class="sm:hidden text-slate-400"><i class="fas fa-chevron-left"></i></button>
+                        <div id="chatAvatar" class="w-12 h-12 rounded-2xl glass flex items-center justify-center font-black accent-text text-xl border border-white/10">?</div>
+                        <div>
+                            <h3 id="chatTitle" class="font-bold">Node Session</h3>
+                            <p id="chatStatus" class="text-[9px] font-black text-green-500 uppercase tracking-widest flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Secure P2P</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="startNexusCall(false)" class="nav-btn glass text-slate-300 hover:accent-text"><i class="fas fa-phone"></i></button>
+                        <button onclick="startNexusCall(true)" class="nav-btn glass text-slate-300 hover:accent-text"><i class="fas fa-video"></i></button>
+                    </div>
+                </header>
+
+                <!-- Messages Feed -->
+                <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scroll flex flex-col">
+                    <!-- Logs & Text JS -->
+                </div>
+
+                <!-- Input Footer -->
+                <div class="p-6">
+                    <div class="glass rounded-2xl p-2 flex items-center gap-2">
+                        <button class="w-10 h-10 text-slate-400 hover:text-indigo-400"><i class="fas fa-paperclip"></i></button>
+                        <input type="text" id="msgIn" placeholder="Enter encrypted text..." class="flex-1 bg-transparent border-none text-sm px-2 focus:outline-none">
+                        <button onclick="sendNexusMsg()" class="w-10 h-10 accent-bg text-white rounded-xl shadow-lg shadow-indigo-500/30 flex items-center justify-center transition-transform active:scale-90">
+                            <i class="fas fa-paper-plane text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
     </div>
 
-    <!-- Call Overlay -->
-    <div id="callUI" class="hidden fixed inset-0 z-[200] bg-black flex flex-col">
+    <!-- Calls UI (Overlays the screen) -->
+    <div id="callOverlay" class="hidden fixed inset-0 z-[200] bg-black flex flex-col animate-fadeIn">
         <video id="remoteVideo" class="flex-1 w-full object-cover scale-x-[-1]" autoplay></video>
-        <div class="absolute top-8 right-8 w-40 aspect-video rounded-3xl overflow-hidden border-2 border-white/20 shadow-2xl">
+        <div class="absolute top-10 right-10 w-44 aspect-video rounded-3xl overflow-hidden border-2 border-white/10 shadow-2xl glass">
             <video id="localVideo" class="w-full h-full object-cover scale-x-[-1]" autoplay muted></video>
         </div>
-        <div class="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-6 glass px-10 py-6 rounded-full shadow-2xl">
-            <button onclick="toggleMedia('audio')" id="callMic" class="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center"><i class="fas fa-microphone"></i></button>
-            <button onclick="endCall()" class="w-16 h-16 rounded-full bg-red-500 text-white flex items-center justify-center text-2xl shadow-lg ring-4 ring-red-500/20"><i class="fas fa-phone-slash"></i></button>
-            <button onclick="toggleMedia('video')" id="callCam" class="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center"><i class="fas fa-video"></i></button>
+        <div class="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-6 glass px-10 py-6 rounded-[2.5rem] shadow-2xl">
+            <button onclick="toggleCallDev('audio')" id="micBtn" class="w-12 h-12 rounded-full glass flex items-center justify-center"><i class="fas fa-microphone"></i></button>
+            <button onclick="hangNexusCall()" class="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white text-2xl shadow-lg ring-8 ring-red-500/10"><i class="fas fa-phone-slash"></i></button>
+            <button onclick="toggleCallDev('video')" id="camBtn" class="w-12 h-12 rounded-full glass flex items-center justify-center"><i class="fas fa-video"></i></button>
         </div>
     </div>
 
-    <!-- Notification / Toast -->
-    <div id="toast" class="fixed top-6 right-6 z-[300] transform translate-x-full transition-transform duration-300">
-        <div class="glass px-6 py-4 rounded-2xl flex items-center gap-4 shadow-2xl border-l-4 accent-border">
-            <i class="fas fa-bell accent-text"></i>
-            <div id="toastContent"></div>
-        </div>
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-8 left-1/2 -translate-x-1/2 z-[300] bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 text-xs font-bold uppercase tracking-widest shadow-2xl transition-all translate-y-[-100px] opacity-0 pointer-events-none">
+        <span id="toastMsg">---</span>
     </div>
 
+    <!-- App Logic -->
     <script type="module">
-        // --- PEER & FIREBASE CONFIG ---
+        // Real-world P2P Reliability Config
         const PEER_CONFIG = {
-            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ]
+            }
         };
 
-        let peer, myId, myData, activePeer;
-        let conns = {}, messages = {}, contacts = {};
+        let peer, myId, userVault, activePeer;
+        let connections = {}, messages = {}, contacts = {};
         let currentCall, localStream;
 
-        // --- AUTH SYSTEM ---
-        window.toggleAuth = (showLogin) => {
-            document.getElementById('loginForm').classList.toggle('hidden', !showLogin);
-            document.getElementById('registerForm').classList.toggle('hidden', showLogin);
-        };
+        // --- AUTH & VAULT LOGIC ---
+        window.toggleAuth = (login) => {
+            document.getElementById('loginForm').classList.toggle('hidden', !login);
+            document.getElementById('regForm').classList.toggle('hidden', login);
+        }
 
-        window.attemptRegister = () => {
+        window.vaultRegister = () => {
             const name = document.getElementById('regName').value.trim();
             const id = document.getElementById('regId').value.trim().toLowerCase();
             const pass = document.getElementById('regPass').value;
 
-            if(!name || !id || !pass) return showToast("All fields mandatory");
+            if(!name || !id || !pass) return showToast("All nodes require data.");
 
-            const accounts = JSON.parse(localStorage.getItem('nexus_accounts') || '{}');
-            if(accounts[id]) return showToast("Node ID already exists");
+            const vault = JSON.parse(localStorage.getItem('nexus_vault') || '{}');
+            if(vault[id]) return showToast("Node ID already claimed.");
 
-            accounts[id] = { name, id, pass, avatar: null, theme: 'midnight' };
-            localStorage.setItem('nexus_accounts', JSON.stringify(accounts));
-            showToast("Node Registered! Please login.");
+            vault[id] = { name, id, pass, theme: 'theme-midnight', avatar: null };
+            localStorage.setItem('nexus_vault', JSON.stringify(vault));
+            showToast("Node Initialized. Authenticate.");
             toggleAuth(true);
-        };
+        }
 
-        window.attemptLogin = () => {
-            const id = document.getElementById('loginId').value.trim().toLowerCase();
-            const pass = document.getElementById('loginPass').value;
+        window.vaultLogin = () => {
+            const id = document.getElementById('nodeIdLogin').value.trim().toLowerCase();
+            const pass = document.getElementById('nodePassLogin').value;
 
-            const accounts = JSON.parse(localStorage.getItem('nexus_accounts') || '{}');
-            const user = accounts[id];
+            const vault = JSON.parse(localStorage.getItem('nexus_vault') || '{}');
+            const user = vault[id];
 
-            if(!user || user.pass !== pass) return showToast("Invalid Credentials");
-
-            myData = user;
-            myId = id;
-            localStorage.setItem('nexus_current_node', id);
-            launchNexus();
-        };
+            if(user && user.pass === pass) {
+                userVault = user;
+                myId = id;
+                localStorage.setItem('nexus_session', id);
+                launchNexus();
+            } else {
+                showToast("Access Denied.");
+            }
+        }
 
         // --- THEME ENGINE ---
-        window.changeTheme = (t) => {
-            document.documentElement.setAttribute('data-theme', t);
-            myData.theme = t;
-            updateAccount();
-        };
+        const themes = ['theme-midnight', 'theme-neon', 'theme-rose'];
+        window.cycleTheme = () => {
+            let idx = themes.indexOf(document.documentElement.className);
+            let next = themes[(idx + 1) % themes.length];
+            document.documentElement.className = next;
+            userVault.theme = next;
+            updateVault();
+            
+            const colors = {'theme-midnight': '#0f172a', 'theme-neon': '#050505', 'theme-rose': '#2d0b13'};
+            document.getElementById('theme-meta').setAttribute('content', colors[next]);
+        }
 
-        // --- NEXUS CORE ---
+        // --- CORE P2P ---
         function launchNexus() {
-            document.getElementById('authContainer').classList.add('hidden');
-            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('authOverlay').classList.add('hidden');
+            document.getElementById('nexusApp').classList.remove('hidden');
 
-            document.getElementById('myName').innerText = myData.name;
-            document.getElementById('myNodeId').innerText = `NODE: ${myData.id}`;
-            document.getElementById('myAvatar').innerText = myData.name.charAt(0).toUpperCase();
-            document.documentElement.setAttribute('data-theme', myData.theme || 'midnight');
+            // Setup Profile UI
+            document.getElementById('userName').innerText = userVault.name;
+            document.getElementById('userId').innerText = `ID: ${userVault.id}`;
+            document.getElementById('userAvatar').innerText = userVault.name.charAt(0).toUpperCase();
+            document.documentElement.className = userVault.theme || 'theme-midnight';
 
-            contacts = JSON.parse(localStorage.getItem(`nexus_contacts_${myId}`) || '{}');
-            messages = JSON.parse(localStorage.getItem(`nexus_msgs_${myId}`) || '{}');
+            // Load Local History
+            contacts = JSON.parse(localStorage.getItem(`nx_contacts_${myId}`) || '{}');
+            messages = JSON.parse(localStorage.getItem(`nx_history_${myId}`) || '{}');
 
             peer = new Peer(myId, PEER_CONFIG);
             
-            peer.on('open', id => console.log("CONNECTED TO MESH", id));
-            peer.on('connection', conn => initConn(conn));
-            peer.on('call', call => handleIncomingCall(call));
-
+            peer.on('open', (id) => console.log("Nexus Node Active:", id));
+            peer.on('connection', (conn) => initConn(conn));
+            peer.on('call', (call) => incomingNexusCall(call));
+            
             renderContacts();
         }
 
         function initConn(conn) {
             const pid = conn.peer;
-            conns[pid] = conn;
+            connections[pid] = conn;
 
             conn.on('open', () => {
                 if(!contacts[pid]) contacts[pid] = { name: pid, id: pid };
+                conn.send({ type: 'handshake', name: userVault.name });
                 renderContacts();
-                conn.send({ type: 'handshake', name: myData.name });
             });
 
-            conn.on('data', data => {
+            conn.on('data', (data) => {
                 if(data.type === 'handshake') {
                     contacts[pid].name = data.name;
-                    renderContacts();
                     syncStorage();
-                } else if(data.type === 'msg') {
-                    saveMsg(pid, pid, data.text, 'text');
-                } else if(data.type === 'call-log') {
-                    saveMsg(pid, pid, data.text, 'log');
+                    renderContacts();
+                } else if(data.type === 'text') {
+                    pushMessage(pid, pid, data.text, 'text');
+                } else if(data.type === 'log') {
+                    pushMessage(pid, pid, data.text, 'log');
                 }
             });
         }
 
-        // --- MESSAGING ---
-        function saveMsg(chatId, from, content, type) {
+        // --- CHAT & LOGS ---
+        function pushMessage(chatId, from, content, type) {
             if(!messages[chatId]) messages[chatId] = [];
             messages[chatId].push({
-                from, content, type, 
+                from, content, type,
                 time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
             });
             syncStorage();
-            if(activePeer === chatId) renderChat();
+            if(activePeer === chatId) renderMessages();
         }
 
-        window.sendText = () => {
-            const input = document.getElementById('chatInput');
+        window.sendNexusMsg = () => {
+            const input = document.getElementById('msgIn');
             const val = input.value.trim();
             if(!val || !activePeer) return;
 
-            const conn = conns[activePeer];
-            if(conn && conn.open) conn.send({ type: 'msg', text: val });
-            
-            saveMsg(activePeer, 'me', val, 'text');
-            input.value = '';
-        };
+            const conn = connections[activePeer];
+            if(conn && conn.open) conn.send({ type: 'text', text: val });
 
-        // --- CALLS & LOGS ---
-        window.startCall = async (video) => {
+            pushMessage(activePeer, 'me', val, 'text');
+            input.value = '';
+        }
+
+        // --- CALLS & SYSTEM LOGS ---
+        window.startNexusCall = async (video) => {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video });
                 document.getElementById('localVideo').srcObject = localStream;
-                document.getElementById('callUI').classList.remove('hidden');
+                document.getElementById('callOverlay').classList.remove('hidden');
                 
-                currentCall = peer.call(activePeer, localStream, { metadata: { name: myData.name, video } });
+                currentCall = peer.call(activePeer, localStream, { metadata: { name: userVault.name, video } });
                 
-                // Add start log
-                const logTxt = `📞 Outgoing ${video?'Video':'Voice'} Call Started`;
-                saveMsg(activePeer, 'me', logTxt, 'log');
-                conns[activePeer]?.send({ type: 'call-log', text: `📞 Incoming ${video?'Video':'Voice'} Call` });
+                // Real-time System Log
+                const logMsg = `📞 Link Origin: ${video?'Video':'Voice'} Session Initiated`;
+                pushMessage(activePeer, 'me', logMsg, 'log');
+                connections[activePeer]?.send({ type: 'log', text: `📞 Incoming Link: ${video?'Video':'Voice'} Stream` });
 
-                bindCallEvents(currentCall);
-            } catch(e) { showToast("Media Access Error"); }
-        };
+                handleCallFlow(currentCall);
+            } catch(e) { showToast("Media Decryption Error."); }
+        }
 
-        function handleIncomingCall(call) {
-            if(confirm(`Incoming Call from ${call.metadata.name}. Accept?`)) {
+        function incomingNexusCall(call) {
+            if(confirm(`Incoming Link Request from ${call.metadata.name}. Accept?`)) {
                 navigator.mediaDevices.getUserMedia({ audio: true, video: call.metadata.video })
                     .then(stream => {
                         localStream = stream;
                         document.getElementById('localVideo').srcObject = localStream;
-                        document.getElementById('callUI').classList.remove('hidden');
+                        document.getElementById('callOverlay').classList.remove('hidden');
                         call.answer(stream);
-                        bindCallEvents(call);
+                        handleCallFlow(call);
                     });
             } else {
                 call.close();
             }
         }
 
-        function bindCallEvents(call) {
-            call.on('stream', remote => document.getElementById('remoteVideo').srcObject = remote);
-            call.on('close', () => endCall());
+        function handleCallFlow(call) {
+            call.on('stream', (remote) => document.getElementById('remoteVideo').srcObject = remote);
+            call.on('close', () => hangNexusCall());
         }
 
-        window.endCall = () => {
+        window.hangNexusCall = () => {
             if(localStream) localStream.getTracks().forEach(t => t.stop());
-            document.getElementById('callUI').classList.add('hidden');
+            document.getElementById('callOverlay').classList.add('hidden');
             if(currentCall) currentCall.close();
-            saveMsg(activePeer, 'me', "⌛ Call Ended", 'log');
-        };
+            pushMessage(activePeer, 'me', "⌛ Link Terminated", 'log');
+        }
 
         // --- UI DRAWING ---
         function renderContacts() {
             const list = document.getElementById('contactList');
             list.innerHTML = '';
             Object.values(contacts).forEach(c => {
+                const active = activePeer === c.id;
                 const div = document.createElement('div');
-                div.className = `p-4 rounded-2xl flex items-center gap-3 cursor-pointer transition-all ${activePeer === c.id ? 'glass border border-white/20' : 'hover:bg-white/5'}`;
-                div.onclick = () => selectChat(c.id);
+                div.className = `p-4 rounded-2xl flex items-center gap-3 cursor-pointer transition-all ${active ? 'bg-white/10 accent-border border' : 'hover:bg-white/5'}`;
+                div.onclick = () => selectSession(c.id);
                 div.innerHTML = `
-                    <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-bold accent-text">${c.name.charAt(0).toUpperCase()}</div>
-                    <div class="flex-1 min-w-0"><h4 class="font-bold text-sm truncate">${c.name}</h4><p class="text-[9px] text-slate-500 uppercase">${c.id}</p></div>
+                    <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-black accent-text">${c.name.charAt(0).toUpperCase()}</div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-bold truncate">${c.name}</h4>
+                        <p class="text-[9px] opacity-40 uppercase tracking-tighter">${c.id}</p>
+                    </div>
                 `;
                 list.appendChild(div);
             });
         }
 
-        function selectChat(id) {
-            activePeer = id;
-            document.getElementById('emptyState').classList.add('hidden');
+        function selectSession(pid) {
+            activePeer = pid;
+            document.getElementById('emptyView').classList.add('hidden');
             document.getElementById('chatMain').classList.remove('hidden');
             document.getElementById('chatMain').classList.add('flex');
-            document.getElementById('activeName').innerText = contacts[id].name;
-            document.getElementById('activeAvatar').innerText = contacts[id].name.charAt(0).toUpperCase();
+            
+            document.getElementById('chatTitle').innerText = contacts[pid].name;
+            document.getElementById('chatAvatar').innerText = contacts[pid].name.charAt(0).toUpperCase();
 
-            if(!conns[id] || !conns[id].open) {
-                const conn = peer.connect(id);
+            if(!connections[pid] || !connections[pid].open) {
+                const conn = peer.connect(pid);
                 initConn(conn);
             }
-            renderChat();
+            renderMessages();
             renderContacts();
         }
 
-        function renderChat() {
-            const feed = document.getElementById('chatFeed');
-            feed.innerHTML = '';
+        function renderMessages() {
+            const div = document.getElementById('messages');
+            div.innerHTML = '';
             (messages[activePeer] || []).forEach(m => {
                 const isMe = m.from === 'me';
                 const el = document.createElement('div');
                 if(m.type === 'log') {
-                    el.className = "flex justify-center p-2";
-                    el.innerHTML = `<div class="msg-log px-4 py-1.5 uppercase tracking-widest font-bold">${m.content}</div>`;
+                    el.className = "system-log";
+                    el.innerText = m.content;
                 } else {
                     el.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
                     el.innerHTML = `
-                        <div class="max-w-[75%] p-4 rounded-2xl ${isMe ? 'msg-sent text-white' : 'msg-received text-slate-200'}">
-                            <p class="text-sm">${m.content}</p>
+                        <div class="msg-bubble ${isMe ? 'msg-sent' : 'msg-received'}">
+                            ${m.content}
                             <span class="text-[9px] opacity-40 block mt-1 text-right">${m.time}</span>
                         </div>
                     `;
                 }
-                feed.appendChild(el);
+                div.appendChild(el);
             });
-            feed.scrollTop = feed.scrollHeight;
+            div.scrollTop = div.scrollHeight;
         }
 
         // --- UTILS ---
-        function updateAccount() {
-            const accs = JSON.parse(localStorage.getItem('nexus_accounts') || '{}');
-            accs[myId] = myData;
-            localStorage.setItem('nexus_accounts', JSON.stringify(accs));
+        function syncStorage() {
+            localStorage.setItem(`nx_contacts_${myId}`, JSON.stringify(contacts));
+            localStorage.setItem(`nx_history_${myId}`, JSON.stringify(messages));
         }
 
-        function syncStorage() {
-            localStorage.setItem(`nexus_contacts_${myId}`, JSON.stringify(contacts));
-            localStorage.setItem(`nexus_msgs_${myId}`, JSON.stringify(messages));
+        function updateVault() {
+            const vault = JSON.parse(localStorage.getItem('nexus_vault') || '{}');
+            vault[myId] = userVault;
+            localStorage.setItem('nexus_vault', JSON.stringify(vault));
         }
 
         window.showToast = (msg) => {
             const t = document.getElementById('toast');
-            document.getElementById('toastContent').innerText = msg;
-            t.classList.remove('translate-x-full');
-            setTimeout(() => t.classList.add('translate-x-full'), 3000);
-        };
+            document.getElementById('toastMsg').innerText = msg;
+            t.classList.remove('opacity-0', 'translate-y-[-100px]');
+            setTimeout(() => t.classList.add('opacity-0', 'translate-y-[-100px]'), 3000);
+        }
 
-        window.logout = () => {
-            localStorage.removeItem('nexus_current_node');
-            location.reload();
-        };
-
-        window.addContact = () => {
-            const id = prompt("Enter Target Nexus ID:");
+        window.linkNewNode = () => {
+            const id = prompt("Node Identifier:");
             if(id && id !== myId) {
                 contacts[id] = { id, name: id };
-                selectChat(id);
+                selectSession(id);
             }
-        };
+        }
 
-        // Auto Login Check
-        const savedNode = localStorage.getItem('nexus_current_node');
-        if(savedNode) {
-            const accounts = JSON.parse(localStorage.getItem('nexus_accounts') || '{}');
-            if(accounts[savedNode]) {
-                myData = accounts[savedNode];
-                myId = savedNode;
+        window.terminateSession = () => {
+            localStorage.removeItem('nexus_session');
+            location.reload();
+        }
+
+        // Persistent Login Check
+        const session = localStorage.getItem('nexus_session');
+        if(session) {
+            const vault = JSON.parse(localStorage.getItem('nexus_vault') || '{}');
+            if(vault[session]) {
+                userVault = vault[session];
+                myId = session;
                 launchNexus();
             }
         }
