@@ -1,482 +1,455 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="midnight">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexus X | Secure P2P</title>
+    <title>Nexus X | v2.0</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        :root {
+        /* Theme Definitions */
+        [data-theme="midnight"] {
             --accent: #6366f1;
-            --bg-dark: #0f172a;
-            --glass: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.1);
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --bg: #0f172a;
+            --panel: rgba(30, 41, 59, 0.5);
+        }
+        [data-theme="emerald"] {
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.3);
+            --bg: #064e3b;
+            --panel: rgba(6, 78, 59, 0.5);
+        }
+        [data-theme="crimson"] {
+            --accent: #ef4444;
+            --accent-glow: rgba(239, 68, 68, 0.3);
+            --bg: #450a0a;
+            --panel: rgba(127, 29, 29, 0.5);
         }
 
         body {
-            background-color: var(--bg-dark);
-            background-image: radial-gradient(circle at 50% -20%, #1e1b4b, #0f172a);
-            color: #e2e8f0;
-            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: #f1f5f9;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.5s ease;
             height: 100dvh;
             overflow: hidden;
         }
 
-        .glass { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--border); }
+        .glass { background: var(--panel); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
+        .accent-text { color: var(--accent); }
+        .accent-bg { background: var(--accent); }
+        .accent-border { border-color: var(--accent); }
         
-        /* Message Bubbles */
-        .msg-sent { background: linear-gradient(135deg, #6366f1, #4f46e5); border-radius: 18px 18px 4px 18px; }
-        .msg-received { background: rgba(255,255,255,0.07); border: 1px solid var(--border); border-radius: 18px 18px 18px 4px; }
+        /* Message Types */
+        .msg-log { background: rgba(0,0,0,0.3); border-radius: 12px; font-size: 0.75rem; color: #94a3b8; border: 1px dashed rgba(255,255,255,0.1); }
+        .msg-sent { background: var(--accent); box-shadow: 0 4px 15px var(--accent-glow); }
+        .msg-received { background: rgba(255,255,255,0.1); }
 
-        /* Animations */
-        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-        .recording { animation: pulse-red 1.5s infinite; background: #ef4444 !important; }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        input:focus { border-color: var(--accent) !important; outline: none; }
+        
+        .avatar-ring { border: 2px solid var(--accent); padding: 2px; border-radius: 50%; }
+        
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-slide { animation: slideUp 0.4s ease forwards; }
     </style>
 </head>
-<body class="flex items-center justify-center p-0 sm:p-4">
+<body class="flex items-center justify-center">
 
-    <!-- Login Overlay -->
-    <div id="authScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md">
-        <div class="glass p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl">
-            <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-indigo-500/40 shadow-lg">
-                <i class="fas fa-terminal text-2xl text-white"></i>
+    <!-- Auth Layer -->
+    <div id="authContainer" class="fixed inset-0 z-[100] flex items-center justify-center bg-[#000000e0] backdrop-blur-xl">
+        <div class="glass p-8 rounded-[2rem] w-full max-w-sm shadow-2xl animate-slide">
+            <div class="mb-8 text-center">
+                <div class="w-16 h-16 accent-bg rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <i class="fas fa-fingerprint text-white text-2xl"></i>
+                </div>
+                <h1 class="text-3xl font-black">NEXUS X</h1>
+                <p class="text-slate-400 text-xs mt-1">SECURE P2P NODE ACCESS</p>
             </div>
-            <h1 class="text-2xl font-bold mb-2">Nexus Node</h1>
-            <p class="text-slate-400 text-sm mb-8">Enter your credentials to join the mesh.</p>
-            
-            <input type="text" id="nodeName" placeholder="Display Name" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-3 focus:outline-none focus:border-indigo-500">
-            <input type="text" id="nodeId" placeholder="Nexus ID (Unique)" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-indigo-500">
-            
-            <button onclick="initNexus()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20">
-                Initialize Connection
-            </button>
+
+            <div id="loginForm" class="space-y-4">
+                <input type="text" id="loginId" placeholder="Nexus ID" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3">
+                <input type="password" id="loginPass" placeholder="Access Lock (Password)" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3">
+                <button onclick="attemptLogin()" class="w-full accent-bg text-white font-bold py-4 rounded-xl shadow-lg">AUTHENTICATE</button>
+                <p class="text-center text-xs text-slate-500">First time? <button onclick="toggleAuth(false)" class="accent-text font-bold">Register Node</button></p>
+            </div>
+
+            <div id="registerForm" class="hidden space-y-4">
+                <input type="text" id="regName" placeholder="Display Name" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3">
+                <input type="text" id="regId" placeholder="Choose Unique Nexus ID" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3">
+                <input type="password" id="regPass" placeholder="Create Access Lock" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3">
+                <button onclick="attemptRegister()" class="w-full accent-bg text-white font-bold py-4 rounded-xl shadow-lg">REGISTER NODE</button>
+                <p class="text-center text-xs text-slate-500">Known node? <button onclick="toggleAuth(true)" class="accent-text font-bold">Login</button></p>
+            </div>
         </div>
     </div>
 
-    <!-- Layout -->
-    <div id="mainApp" class="hidden w-full h-full max-w-6xl flex gap-4">
+    <!-- Main Content -->
+    <div id="mainApp" class="hidden w-full h-full p-0 sm:p-4 md:p-6 flex gap-6 max-w-7xl">
         
         <!-- Sidebar -->
-        <div id="sidebar" class="glass w-full sm:w-80 rounded-3xl flex flex-col overflow-hidden transition-all">
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-bold tracking-tight">Messages</h2>
-                    <div class="flex gap-2">
-                        <button onclick="showAddContact()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-indigo-600 transition-all">
-                            <i class="fas fa-plus text-sm"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Status Card -->
-                <div class="bg-indigo-600/10 border border-indigo-500/20 rounded-2xl p-3 mb-6">
-                    <div class="flex items-center gap-3">
-                        <div id="myNodeAvatar" class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white">?</div>
-                        <div class="flex-1 min-w-0">
-                            <p id="myNodeName" class="text-xs font-bold truncate">Loading...</p>
-                            <p id="myNodeId" class="text-[10px] text-indigo-400 font-mono uppercase">ID: ----</p>
+        <aside id="sidebar" class="glass w-full sm:w-80 rounded-[2.5rem] flex flex-col overflow-hidden transition-all duration-300">
+            <!-- User Profile Section -->
+            <div class="p-6 border-b border-white/5">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="avatar-ring relative group cursor-pointer" onclick="openProfileSettings()">
+                        <div id="myAvatar" class="w-12 h-12 rounded-full accent-bg flex items-center justify-center font-black text-xl">?</div>
+                        <div class="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="fas fa-edit text-xs"></i>
                         </div>
-                        <div class="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e]"></div>
                     </div>
+                    <div class="flex-1 min-w-0">
+                        <h2 id="myName" class="font-bold truncate">---</h2>
+                        <p id="myNodeId" class="text-[10px] accent-text font-black tracking-tighter uppercase"></p>
+                    </div>
+                    <button onclick="logout()" class="text-slate-500 hover:text-red-500 transition-colors"><i class="fas fa-power-off"></i></button>
                 </div>
-
-                <div class="relative">
-                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                    <input type="text" placeholder="Search decrypted chats..." class="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm">
+                
+                <div class="flex gap-2">
+                    <button onclick="changeTheme('midnight')" class="flex-1 h-2 rounded bg-indigo-500 border border-white/20"></button>
+                    <button onclick="changeTheme('emerald')" class="flex-1 h-2 rounded bg-emerald-500 border border-white/20"></button>
+                    <button onclick="changeTheme('crimson')" class="flex-1 h-2 rounded bg-red-500 border border-white/20"></button>
                 </div>
             </div>
 
-            <div id="contactList" class="flex-1 overflow-y-auto px-1">
-                <!-- Contacts will be injected here -->
-            </div>
-        </div>
-
-        <!-- Chat Window -->
-        <div id="chatWindow" class="hidden sm:flex glass flex-1 rounded-3xl flex-col overflow-hidden relative">
-            
-            <!-- Dynamic Placeholder -->
-            <div id="placeholder" class="absolute inset-0 z-10 bg-slate-900/40 backdrop-blur-sm flex flex-col items-center justify-center">
-                <div class="w-16 h-16 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center mb-4">
-                    <i class="fas fa-lock text-white/20"></i>
+            <div class="p-6 flex-1 flex flex-col min-h-0">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Channels</h3>
+                    <button onclick="addContact()" class="w-6 h-6 rounded-lg accent-bg flex items-center justify-center"><i class="fas fa-plus text-[10px]"></i></button>
                 </div>
-                <p class="text-white/40 text-sm">Select a node to begin end-to-end session.</p>
+                <div id="contactList" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                    <!-- Contacts go here -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- Chat Main -->
+        <main id="chatMain" class="hidden sm:flex glass flex-1 rounded-[2.5rem] flex-col overflow-hidden relative">
+            <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/20 backdrop-blur-sm">
+                <i class="fas fa-shield-alt text-4xl mb-4 opacity-10"></i>
+                <p class="text-slate-500 text-sm font-medium">NO ACTIVE ENCRYPTION STREAM</p>
             </div>
 
-            <!-- Chat Header -->
-            <div class="p-4 sm:p-6 flex items-center justify-between border-b border-white/5">
+            <header class="p-6 flex items-center justify-between border-b border-white/5">
                 <div class="flex items-center gap-4">
-                    <button onclick="backToSidebar()" class="sm:hidden text-slate-400 p-2"><i class="fas fa-arrow-left"></i></button>
-                    <div id="activeAvatar" class="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center font-bold text-indigo-400 border border-white/10">?</div>
+                    <button onclick="toggleMobileSidebar(true)" class="sm:hidden text-slate-400"><i class="fas fa-bars"></i></button>
+                    <div id="activeAvatar" class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black accent-text text-xl border border-white/10">?</div>
                     <div>
-                        <h3 id="activeTitle" class="font-bold text-slate-100">Contact Node</h3>
-                        <p id="activeStatus" class="text-[10px] text-green-500 uppercase tracking-widest font-bold">Active Session</p>
+                        <h2 id="activeName" class="font-bold">Unknown Node</h2>
+                        <div class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">P2P Secure Link</span>
+                        </div>
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="startCall(false)" class="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-all"><i class="fas fa-phone-alt"></i></button>
-                    <button onclick="startCall(true)" class="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-all"><i class="fas fa-video"></i></button>
+                    <button onclick="startCall(false)" class="w-11 h-11 rounded-2xl hover:bg-white/5 flex items-center justify-center transition-all"><i class="fas fa-phone-alt"></i></button>
+                    <button onclick="startCall(true)" class="w-11 h-11 rounded-2xl hover:bg-white/5 flex items-center justify-center transition-all"><i class="fas fa-video"></i></button>
                 </div>
-            </div>
+            </header>
 
-            <!-- Messages Area -->
-            <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col">
+            <div id="chatFeed" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scroll">
                 <!-- Messages JS Inject -->
             </div>
 
-            <!-- Typing/Voice Indicator -->
-            <div id="indicator" class="px-6 py-2 text-[10px] text-indigo-400 font-bold hidden italic">Node is typing...</div>
-
-            <!-- Footer / Input -->
-            <div class="p-4 sm:p-6 bg-white/[0.02]">
-                <div class="flex items-center gap-3">
-                    <button onclick="document.getElementById('fileInput').click()" class="w-11 h-11 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                    <input type="file" id="fileInput" class="hidden" onchange="handleFileUpload(this)">
-                    
-                    <div class="flex-1 relative">
-                        <input type="text" id="userInput" oninput="sendTyping()" placeholder="Encrypt message..." class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 focus:outline-none focus:border-indigo-500 transition-all text-sm">
-                        <button onclick="toggleVoiceRecord()" id="micBtn" class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl text-slate-400 hover:text-white transition-all">
-                            <i class="fas fa-microphone"></i>
-                        </button>
-                    </div>
-
-                    <button onclick="emitText()" class="w-12 h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-600/30 transition-all">
-                        <i class="fas fa-paper-plane text-sm"></i>
-                    </button>
+            <footer class="p-6">
+                <div class="glass rounded-[1.5rem] p-2 flex items-center gap-3">
+                    <button onclick="document.getElementById('fileIn').click()" class="w-10 h-10 text-slate-400 hover:text-white"><i class="fas fa-paperclip"></i></button>
+                    <input type="file" id="fileIn" class="hidden" onchange="fileSent(this)">
+                    <input type="text" id="chatInput" placeholder="Write to Node..." class="flex-1 bg-transparent px-2 border-none text-sm">
+                    <button onclick="sendText()" class="w-10 h-10 accent-bg rounded-xl flex items-center justify-center shadow-lg"><i class="fas fa-paper-plane text-xs"></i></button>
                 </div>
-            </div>
-        </div>
+            </footer>
+        </main>
     </div>
 
     <!-- Call Overlay -->
-    <div id="callOverlay" class="hidden fixed inset-0 z-[100] bg-slate-950 flex flex-col">
-        <video id="remoteVideo" class="flex-1 w-full scale-x-[-1] object-cover" autoplay></video>
-        <div class="absolute top-6 right-6 w-32 sm:w-48 aspect-video rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
+    <div id="callUI" class="hidden fixed inset-0 z-[200] bg-black flex flex-col">
+        <video id="remoteVideo" class="flex-1 w-full object-cover scale-x-[-1]" autoplay></video>
+        <div class="absolute top-8 right-8 w-40 aspect-video rounded-3xl overflow-hidden border-2 border-white/20 shadow-2xl">
             <video id="localVideo" class="w-full h-full object-cover scale-x-[-1]" autoplay muted></video>
         </div>
-        <div class="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4 glass px-8 py-5 rounded-full">
-            <button onclick="toggleCallDev('audio')" id="micCallBtn" class="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center"><i class="fas fa-microphone"></i></button>
-            <button onclick="hangup()" class="w-14 h-14 rounded-full bg-red-500 text-white flex items-center justify-center text-xl shadow-lg shadow-red-500/40"><i class="fas fa-phone-slash"></i></button>
-            <button onclick="toggleCallDev('video')" id="camCallBtn" class="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center"><i class="fas fa-video"></i></button>
+        <div class="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-6 glass px-10 py-6 rounded-full shadow-2xl">
+            <button onclick="toggleMedia('audio')" id="callMic" class="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center"><i class="fas fa-microphone"></i></button>
+            <button onclick="endCall()" class="w-16 h-16 rounded-full bg-red-500 text-white flex items-center justify-center text-2xl shadow-lg ring-4 ring-red-500/20"><i class="fas fa-phone-slash"></i></button>
+            <button onclick="toggleMedia('video')" id="callCam" class="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center"><i class="fas fa-video"></i></button>
         </div>
     </div>
 
-    <!-- Incoming Call -->
-    <div id="incomingCall" class="hidden fixed top-6 left-1/2 -translate-x-1/2 z-[110] w-[90%] max-w-sm glass rounded-2xl p-4 flex items-center gap-4 shadow-2xl animate-bounce">
-        <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center">
-            <i class="fas fa-video text-white"></i>
-        </div>
-        <div class="flex-1">
-            <p class="text-xs text-indigo-400 font-bold uppercase">Incoming Node Link</p>
-            <h4 id="callerName" class="font-bold">Unknown Node</h4>
-        </div>
-        <div class="flex gap-2">
-            <button onclick="answerCall(false)" class="w-10 h-10 bg-green-500 rounded-lg text-white"><i class="fas fa-phone"></i></button>
-            <button onclick="rejectCall()" class="w-10 h-10 bg-red-500 rounded-lg text-white"><i class="fas fa-times"></i></button>
+    <!-- Notification / Toast -->
+    <div id="toast" class="fixed top-6 right-6 z-[300] transform translate-x-full transition-transform duration-300">
+        <div class="glass px-6 py-4 rounded-2xl flex items-center gap-4 shadow-2xl border-l-4 accent-border">
+            <i class="fas fa-bell accent-text"></i>
+            <div id="toastContent"></div>
         </div>
     </div>
 
     <script type="module">
-        // Real-world P2P needs STUN servers to bypass Firewalls
+        // --- PEER & FIREBASE CONFIG ---
         const PEER_CONFIG = {
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' }
-                ]
-            }
+            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
         };
 
-        let peer, myId, myName, activeId;
+        let peer, myId, myData, activePeer;
         let conns = {}, messages = {}, contacts = {};
-        let mediaRecorder, voiceChunks = [], isRecording = false;
         let currentCall, localStream;
 
-        // --- SESSION MANAGEMENT ---
-        window.initNexus = () => {
-            const name = document.getElementById('nodeName').value.trim();
-            const id = document.getElementById('nodeId').value.trim().toLowerCase();
-            if(!name || !id) return alert("All nodes must have a name and ID.");
-            
-            myId = id; myName = name;
-            localStorage.setItem('nexus_session', JSON.stringify({id, name}));
-            
-            completeLogin();
+        // --- AUTH SYSTEM ---
+        window.toggleAuth = (showLogin) => {
+            document.getElementById('loginForm').classList.toggle('hidden', !showLogin);
+            document.getElementById('registerForm').classList.toggle('hidden', showLogin);
         };
 
-        function completeLogin() {
-            document.getElementById('authScreen').classList.add('hidden');
-            document.getElementById('mainApp').classList.remove('hidden');
-            
-            document.getElementById('myNodeName').innerText = myName;
-            document.getElementById('myNodeId').innerText = `ID: ${myId}`;
-            document.getElementById('myNodeAvatar').innerText = myName.charAt(0).toUpperCase();
+        window.attemptRegister = () => {
+            const name = document.getElementById('regName').value.trim();
+            const id = document.getElementById('regId').value.trim().toLowerCase();
+            const pass = document.getElementById('regPass').value;
 
-            contacts = JSON.parse(localStorage.getItem('nexus_contacts') || '{}');
-            messages = JSON.parse(localStorage.getItem('nexus_messages') || '{}');
+            if(!name || !id || !pass) return showToast("All fields mandatory");
+
+            const accounts = JSON.parse(localStorage.getItem('nexus_accounts') || '{}');
+            if(accounts[id]) return showToast("Node ID already exists");
+
+            accounts[id] = { name, id, pass, avatar: null, theme: 'midnight' };
+            localStorage.setItem('nexus_accounts', JSON.stringify(accounts));
+            showToast("Node Registered! Please login.");
+            toggleAuth(true);
+        };
+
+        window.attemptLogin = () => {
+            const id = document.getElementById('loginId').value.trim().toLowerCase();
+            const pass = document.getElementById('loginPass').value;
+
+            const accounts = JSON.parse(localStorage.getItem('nexus_accounts') || '{}');
+            const user = accounts[id];
+
+            if(!user || user.pass !== pass) return showToast("Invalid Credentials");
+
+            myData = user;
+            myId = id;
+            localStorage.setItem('nexus_current_node', id);
+            launchNexus();
+        };
+
+        // --- THEME ENGINE ---
+        window.changeTheme = (t) => {
+            document.documentElement.setAttribute('data-theme', t);
+            myData.theme = t;
+            updateAccount();
+        };
+
+        // --- NEXUS CORE ---
+        function launchNexus() {
+            document.getElementById('authContainer').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+
+            document.getElementById('myName').innerText = myData.name;
+            document.getElementById('myNodeId').innerText = `NODE: ${myData.id}`;
+            document.getElementById('myAvatar').innerText = myData.name.charAt(0).toUpperCase();
+            document.documentElement.setAttribute('data-theme', myData.theme || 'midnight');
+
+            contacts = JSON.parse(localStorage.getItem(`nexus_contacts_${myId}`) || '{}');
+            messages = JSON.parse(localStorage.getItem(`nexus_msgs_${myId}`) || '{}');
 
             peer = new Peer(myId, PEER_CONFIG);
             
-            peer.on('open', (id) => console.log("Nexus Online:", id));
-            peer.on('connection', (conn) => handleConnection(conn));
-            peer.on('call', (call) => displayIncoming(call));
-            
-            renderSidebar();
+            peer.on('open', id => console.log("CONNECTED TO MESH", id));
+            peer.on('connection', conn => initConn(conn));
+            peer.on('call', call => handleIncomingCall(call));
+
+            renderContacts();
         }
 
-        // --- MESSAGE HANDLING ---
-        function handleConnection(conn) {
+        function initConn(conn) {
             const pid = conn.peer;
             conns[pid] = conn;
 
             conn.on('open', () => {
-                if(!contacts[pid]) contacts[pid] = { id: pid, name: pid };
-                conn.send({ type: 'handshake', name: myName });
-                renderSidebar();
+                if(!contacts[pid]) contacts[pid] = { name: pid, id: pid };
+                renderContacts();
+                conn.send({ type: 'handshake', name: myData.name });
             });
 
-            conn.on('data', (data) => {
+            conn.on('data', data => {
                 if(data.type === 'handshake') {
                     contacts[pid].name = data.name;
-                    syncData();
-                } else if(data.type === 'text') {
-                    storeMessage(pid, pid, data.text, 'text');
-                } else if(data.type === 'media') {
-                    storeMessage(pid, pid, data.data, 'media', data.mime);
-                } else if(data.type === 'typing') {
-                    showTypingIndicator(pid);
+                    renderContacts();
+                    syncStorage();
+                } else if(data.type === 'msg') {
+                    saveMsg(pid, pid, data.text, 'text');
+                } else if(data.type === 'call-log') {
+                    saveMsg(pid, pid, data.text, 'log');
                 }
             });
         }
 
-        function storeMessage(chatId, from, content, type, mime = '') {
+        // --- MESSAGING ---
+        function saveMsg(chatId, from, content, type) {
             if(!messages[chatId]) messages[chatId] = [];
             messages[chatId].push({
-                from, content, type, mime,
+                from, content, type, 
                 time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
             });
-            syncData();
-            if(activeId === chatId) renderMessages();
+            syncStorage();
+            if(activePeer === chatId) renderChat();
         }
 
-        window.emitText = () => {
-            const input = document.getElementById('userInput');
+        window.sendText = () => {
+            const input = document.getElementById('chatInput');
             const val = input.value.trim();
-            if(!val || !activeId) return;
+            if(!val || !activePeer) return;
 
-            const conn = conns[activeId];
-            if(conn && conn.open) conn.send({ type: 'text', text: val });
-
-            storeMessage(activeId, 'me', val, 'text');
+            const conn = conns[activePeer];
+            if(conn && conn.open) conn.send({ type: 'msg', text: val });
+            
+            saveMsg(activePeer, 'me', val, 'text');
             input.value = '';
         };
 
-        // --- MEDIA: VOICE NOTES ---
-        window.toggleVoiceRecord = async () => {
-            if(!isRecording) {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                voiceChunks = [];
+        // --- CALLS & LOGS ---
+        window.startCall = async (video) => {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video });
+                document.getElementById('localVideo').srcObject = localStream;
+                document.getElementById('callUI').classList.remove('hidden');
                 
-                mediaRecorder.ondataavailable = e => voiceChunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(voiceChunks, { type: 'audio/ogg; codecs=opus' });
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const base64 = reader.result;
-                        if(conns[activeId]) {
-                            conns[activeId].send({ type: 'media', data: base64, mime: 'audio/ogg' });
-                            storeMessage(activeId, 'me', base64, 'media', 'audio/ogg');
-                        }
-                    };
-                    reader.readAsDataURL(blob);
-                };
+                currentCall = peer.call(activePeer, localStream, { metadata: { name: myData.name, video } });
+                
+                // Add start log
+                const logTxt = `📞 Outgoing ${video?'Video':'Voice'} Call Started`;
+                saveMsg(activePeer, 'me', logTxt, 'log');
+                conns[activePeer]?.send({ type: 'call-log', text: `📞 Incoming ${video?'Video':'Voice'} Call` });
 
-                mediaRecorder.start();
-                isRecording = true;
-                document.getElementById('micBtn').classList.add('recording');
+                bindCallEvents(currentCall);
+            } catch(e) { showToast("Media Access Error"); }
+        };
+
+        function handleIncomingCall(call) {
+            if(confirm(`Incoming Call from ${call.metadata.name}. Accept?`)) {
+                navigator.mediaDevices.getUserMedia({ audio: true, video: call.metadata.video })
+                    .then(stream => {
+                        localStream = stream;
+                        document.getElementById('localVideo').srcObject = localStream;
+                        document.getElementById('callUI').classList.remove('hidden');
+                        call.answer(stream);
+                        bindCallEvents(call);
+                    });
             } else {
-                mediaRecorder.stop();
-                isRecording = false;
-                document.getElementById('micBtn').classList.remove('recording');
+                call.close();
             }
+        }
+
+        function bindCallEvents(call) {
+            call.on('stream', remote => document.getElementById('remoteVideo').srcObject = remote);
+            call.on('close', () => endCall());
+        }
+
+        window.endCall = () => {
+            if(localStream) localStream.getTracks().forEach(t => t.stop());
+            document.getElementById('callUI').classList.add('hidden');
+            if(currentCall) currentCall.close();
+            saveMsg(activePeer, 'me', "⌛ Call Ended", 'log');
         };
 
-        // --- FILE HANDLING ---
-        window.handleFileUpload = (input) => {
-            const file = input.files[0];
-            if(!file || !activeId) return;
-
-            const reader = new FileReader();
-            reader.onload = () => {
-                const conn = conns[activeId];
-                if(conn) {
-                    conn.send({ type: 'media', data: reader.result, mime: file.type, fileName: file.name });
-                    storeMessage(activeId, 'me', reader.result, 'media', file.type);
-                }
-            };
-            reader.readAsDataURL(file);
-        };
-
-        // --- UI RENDERING ---
-        function renderSidebar() {
+        // --- UI DRAWING ---
+        function renderContacts() {
             const list = document.getElementById('contactList');
             list.innerHTML = '';
             Object.values(contacts).forEach(c => {
-                const isActive = activeId === c.id;
                 const div = document.createElement('div');
-                div.className = `flex items-center gap-4 p-4 mx-2 rounded-2xl cursor-pointer transition-all ${isActive ? 'bg-indigo-600/20 border border-indigo-500/30' : 'hover:bg-white/5'}`;
+                div.className = `p-4 rounded-2xl flex items-center gap-3 cursor-pointer transition-all ${activePeer === c.id ? 'glass border border-white/20' : 'hover:bg-white/5'}`;
                 div.onclick = () => selectChat(c.id);
                 div.innerHTML = `
-                    <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-indigo-400">${c.name.charAt(0).toUpperCase()}</div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-center">
-                            <h4 class="font-bold text-sm truncate">${c.name}</h4>
-                        </div>
-                        <p class="text-[10px] text-slate-500 uppercase font-mono">${c.id}</p>
-                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-bold accent-text">${c.name.charAt(0).toUpperCase()}</div>
+                    <div class="flex-1 min-w-0"><h4 class="font-bold text-sm truncate">${c.name}</h4><p class="text-[9px] text-slate-500 uppercase">${c.id}</p></div>
                 `;
                 list.appendChild(div);
             });
         }
 
         function selectChat(id) {
-            activeId = id;
-            document.getElementById('placeholder').classList.add('hidden');
-            document.getElementById('chatWindow').classList.remove('hidden');
-            document.getElementById('chatWindow').classList.add('flex');
-            
-            document.getElementById('activeTitle').innerText = contacts[id].name;
+            activePeer = id;
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('chatMain').classList.remove('hidden');
+            document.getElementById('chatMain').classList.add('flex');
+            document.getElementById('activeName').innerText = contacts[id].name;
             document.getElementById('activeAvatar').innerText = contacts[id].name.charAt(0).toUpperCase();
 
             if(!conns[id] || !conns[id].open) {
                 const conn = peer.connect(id);
-                handleConnection(conn);
+                initConn(conn);
             }
-
-            renderMessages();
-            renderSidebar();
-            
-            if(window.innerWidth < 640) {
-                document.getElementById('sidebar').classList.add('hidden');
-            }
+            renderChat();
+            renderContacts();
         }
 
-        function renderMessages() {
-            const div = document.getElementById('messages');
-            div.innerHTML = '';
-            (messages[activeId] || []).forEach(m => {
+        function renderChat() {
+            const feed = document.getElementById('chatFeed');
+            feed.innerHTML = '';
+            (messages[activePeer] || []).forEach(m => {
                 const isMe = m.from === 'me';
-                const wrap = document.createElement('div');
-                wrap.className = `flex ${isMe ? 'justify-end' : 'justify-start'} w-full mb-1`;
-                
-                let content = `<p class="text-sm">${m.content}</p>`;
-                if(m.type === 'media') {
-                    if(m.mime.startsWith('audio')) {
-                        content = `<audio src="${m.content}" controls class="max-w-full h-8"></audio>`;
-                    } else if(m.mime.startsWith('image')) {
-                        content = `<img src="${m.content}" class="rounded-lg max-w-full border border-white/10" />`;
-                    } else {
-                        content = `<div class="p-2 bg-black/20 rounded flex items-center gap-2"><i class="fas fa-file"></i> <span class="text-xs">File Attachment</span></div>`;
-                    }
+                const el = document.createElement('div');
+                if(m.type === 'log') {
+                    el.className = "flex justify-center p-2";
+                    el.innerHTML = `<div class="msg-log px-4 py-1.5 uppercase tracking-widest font-bold">${m.content}</div>`;
+                } else {
+                    el.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
+                    el.innerHTML = `
+                        <div class="max-w-[75%] p-4 rounded-2xl ${isMe ? 'msg-sent text-white' : 'msg-received text-slate-200'}">
+                            <p class="text-sm">${m.content}</p>
+                            <span class="text-[9px] opacity-40 block mt-1 text-right">${m.time}</span>
+                        </div>
+                    `;
                 }
-
-                wrap.innerHTML = `
-                    <div class="max-w-[80%] p-4 ${isMe ? 'msg-sent' : 'msg-received'} shadow-xl">
-                        ${content}
-                        <span class="text-[9px] opacity-40 block mt-2 text-right uppercase font-bold">${m.time}</span>
-                    </div>
-                `;
-                div.appendChild(wrap);
+                feed.appendChild(el);
             });
-            div.scrollTop = div.scrollHeight;
+            feed.scrollTop = feed.scrollHeight;
         }
-
-        // --- VIDEO CALLING ---
-        window.startCall = async (video) => {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
-                document.getElementById('localVideo').srcObject = localStream;
-                document.getElementById('callOverlay').classList.remove('hidden');
-                
-                currentCall = peer.call(activeId, localStream, { metadata: { name: myName, video: video } });
-                bindCallEvents(currentCall);
-            } catch (err) { alert("Mesh access denied for media."); }
-        };
-
-        function displayIncoming(call) {
-            currentCall = call;
-            document.getElementById('callerName').innerText = call.metadata.name;
-            document.getElementById('incomingCall').classList.remove('hidden');
-        }
-
-        window.answerCall = async (video) => {
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: currentCall.metadata.video });
-            document.getElementById('localVideo').srcObject = localStream;
-            document.getElementById('incomingCall').classList.add('hidden');
-            document.getElementById('callOverlay').classList.remove('hidden');
-            currentCall.answer(localStream);
-            bindCallEvents(currentCall);
-        };
-
-        function bindCallEvents(call) {
-            call.on('stream', (remote) => document.getElementById('remoteVideo').srcObject = remote);
-            call.on('close', () => hangup());
-        }
-
-        window.hangup = () => {
-            if(localStream) localStream.getTracks().forEach(t => t.stop());
-            document.getElementById('callOverlay').classList.add('hidden');
-            if(currentCall) currentCall.close();
-        };
 
         // --- UTILS ---
-        function syncData() {
-            localStorage.setItem('nexus_contacts', JSON.stringify(contacts));
-            localStorage.setItem('nexus_messages', JSON.stringify(messages));
+        function updateAccount() {
+            const accs = JSON.parse(localStorage.getItem('nexus_accounts') || '{}');
+            accs[myId] = myData;
+            localStorage.setItem('nexus_accounts', JSON.stringify(accs));
         }
 
-        window.showAddContact = () => {
-            const id = prompt("Link Nexus ID:");
+        function syncStorage() {
+            localStorage.setItem(`nexus_contacts_${myId}`, JSON.stringify(contacts));
+            localStorage.setItem(`nexus_msgs_${myId}`, JSON.stringify(messages));
+        }
+
+        window.showToast = (msg) => {
+            const t = document.getElementById('toast');
+            document.getElementById('toastContent').innerText = msg;
+            t.classList.remove('translate-x-full');
+            setTimeout(() => t.classList.add('translate-x-full'), 3000);
+        };
+
+        window.logout = () => {
+            localStorage.removeItem('nexus_current_node');
+            location.reload();
+        };
+
+        window.addContact = () => {
+            const id = prompt("Enter Target Nexus ID:");
             if(id && id !== myId) {
                 contacts[id] = { id, name: id };
                 selectChat(id);
             }
         };
 
-        window.backToSidebar = () => {
-            document.getElementById('sidebar').classList.remove('hidden');
-            document.getElementById('chatWindow').classList.add('hidden');
-        };
-
-        window.sendTyping = () => {
-            if(conns[activeId]) conns[activeId].send({ type: 'typing' });
-        };
-
-        function showTypingIndicator(pid) {
-            if(activeId === pid) {
-                const ind = document.getElementById('indicator');
-                ind.classList.remove('hidden');
-                clearTimeout(window.typeTimer);
-                window.typeTimer = setTimeout(() => ind.classList.add('hidden'), 2000);
+        // Auto Login Check
+        const savedNode = localStorage.getItem('nexus_current_node');
+        if(savedNode) {
+            const accounts = JSON.parse(localStorage.getItem('nexus_accounts') || '{}');
+            if(accounts[savedNode]) {
+                myData = accounts[savedNode];
+                myId = savedNode;
+                launchNexus();
             }
-        }
-
-        // Check Session on Start
-        const saved = JSON.parse(localStorage.getItem('nexus_session'));
-        if(saved) {
-            document.getElementById('nodeName').value = saved.name;
-            document.getElementById('nodeId').value = saved.id;
         }
     </script>
 </body>
