@@ -1,1871 +1,483 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<meta name="theme-color" content="#05080f">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>NEXUS · P2P Messenger</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
-<style>
-/* ═══════════════════════════════════════
-   FOUNDATIONS
-═══════════════════════════════════════ */
-:root {
-  --ink:    #05080f;
-  --ink2:   #080d17;
-  --ink3:   #0c1220;
-  --glass:  rgba(12,18,32,0.82);
-  --glass2: rgba(8,13,23,0.92);
-  --glass3: rgba(255,255,255,0.028);
-  --rim:    rgba(255,255,255,0.07);
-  --rim2:   rgba(255,255,255,0.04);
-
-  --c:      #00e5cc;        /* primary teal */
-  --c-dim:  rgba(0,229,204,0.12);
-  --c-glow: rgba(0,229,204,0.25);
-  --m:      #ff4d8d;        /* magenta accent */
-  --m-dim:  rgba(255,77,141,0.12);
-  --gold:   #ffc86b;        /* warm gold */
-  --green:  #4ade80;
-  --red:    #f87171;
-
-  --t1: #e8f4f2;            /* text primary */
-  --t2: rgba(200,230,225,0.55); /* text secondary */
-  --t3: rgba(180,210,205,0.3);  /* text tertiary */
-
-  --r:   16px;
-  --r-sm: 10px;
-  --r-xs: 6px;
-
-  --shadow: 0 8px 32px rgba(0,0,0,0.5);
-  --shadow-sm: 0 4px 16px rgba(0,0,0,0.35);
-  --glow-c: 0 0 24px rgba(0,229,204,0.22), 0 0 60px rgba(0,229,204,0.08);
-  --glow-m: 0 0 20px rgba(255,77,141,0.25);
-
-  --nav-h: 62px;
-  --bar-h: 68px;
-  --topbar-h: 62px;
-  --sidebar-w: 340px;
-}
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html { height: 100%; -webkit-text-size-adjust: 100%; }
-body { height: 100dvh; overflow: hidden; background: var(--ink); color: var(--t1); font-family: 'Outfit', sans-serif; font-size: clamp(13px,1.5vw,15px); line-height: 1.5; }
-
-/* Scanlines */
-body::after { content: ''; position: fixed; inset: 0; z-index: 9998; background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,229,204,0.008) 3px, rgba(0,229,204,0.008) 6px); pointer-events: none; }
-
-/* Ambient glow */
-#amb { position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background: radial-gradient(ellipse 55% 35% at 75% 5%, rgba(0,229,204,0.07) 0%, transparent 65%),
-              radial-gradient(ellipse 40% 25% at 15% 95%, rgba(255,77,141,0.07) 0%, transparent 60%),
-              radial-gradient(ellipse 60% 60% at 50% 50%, rgba(0,10,25,0.3) 0%, transparent 100%); }
-
-/* ── SCROLLBARS ── */
-* { scrollbar-width: thin; scrollbar-color: rgba(0,229,204,0.1) transparent; }
-::-webkit-scrollbar { width: 2px; } ::-webkit-scrollbar-thumb { background: rgba(0,229,204,0.12); border-radius: 1px; }
-
-/* ── UTILITY ── */
-.mono { font-family: 'JetBrains Mono', monospace; }
-.syne { font-family: 'Syne', sans-serif; }
-.hide { display: none !important; }
-.sr { overflow-y: auto; overscroll-behavior: contain; }
-.sr::-webkit-scrollbar { display: none; }
-
-/* ═══════════════════════════════════════
-   SCREENS
-═══════════════════════════════════════ */
-.screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; background: var(--ink); overflow: hidden; }
-
-/* ═══════════════════════════════════════
-   AUTH SCREENS
-═══════════════════════════════════════ */
-.auth-bg {
-  position: absolute; inset: 0; z-index: 0;
-  background-image:
-    linear-gradient(rgba(0,229,204,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,229,204,0.03) 1px, transparent 1px);
-  background-size: 44px 44px;
-  animation: gridFall 30s linear infinite;
-}
-@keyframes gridFall { from { transform: translateY(0); } to { transform: translateY(44px); } }
-
-.auth-center { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100dvh; padding: clamp(16px,5vw,32px) clamp(14px,4vw,24px); overflow-y: auto; gap: 0; padding-top: clamp(32px,8vh,72px); }
-
-.brand { text-align: center; margin-bottom: 36px; }
-.brand-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(38px,11vw,52px); letter-spacing: 0.12em; color: var(--c); text-shadow: 0 0 40px var(--c-glow), 0 0 100px rgba(0,229,204,0.15); animation: brandPulse 4s ease-in-out infinite; }
-@keyframes brandPulse { 0%,100% { text-shadow: 0 0 40px var(--c-glow), 0 0 100px rgba(0,229,204,0.15); } 50% { text-shadow: 0 0 60px rgba(0,229,204,0.5), 0 0 120px rgba(0,229,204,0.2); } }
-.brand-sub { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.35em; color: var(--t3); margin-top: 6px; text-transform: uppercase; }
-
-/* GLASS CARD */
-.g-card { width: 100%; max-width: min(92vw, 380px); background: var(--glass); border: 1px solid var(--rim); border-radius: 20px; padding: clamp(20px,5vw,32px) clamp(16px,4vw,28px); position: relative; overflow: hidden; backdrop-filter: blur(24px); box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.06); }
-.g-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent 0%, var(--c) 30%, var(--m) 70%, transparent 100%); opacity: 0.5; }
-
-/* STEPS */
-.steps { display: flex; gap: 6px; justify-content: center; margin-bottom: 24px; }
-.step-pip { height: 3px; border-radius: 2px; transition: all 0.35s ease; background: var(--rim); }
-.step-pip.done { background: rgba(0,229,204,0.4); width: 20px; }
-.step-pip.active { background: var(--c); box-shadow: 0 0 8px var(--c-glow); width: 32px; }
-.step-pip.idle { width: 20px; }
-
-.card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.06em; color: var(--t1); margin-bottom: 20px; }
-.card-desc { font-size: 11px; color: var(--t3); margin-bottom: 16px; line-height: 1.7; font-family: 'JetBrains Mono', monospace; }
-
-/* FORM FIELDS */
-.f-group { margin-bottom: 14px; }
-.f-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t2); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 6px; display: block; }
-.f-hint { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; color: var(--t3); margin-top: 4px; line-height: 1.6; }
-
-.inp { width: 100%; background: rgba(0,229,204,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: var(--r-sm); padding: 11px 14px; color: var(--t1); font-family: 'Outfit', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; caret-color: var(--c); }
-.inp:focus { border-color: rgba(0,229,204,0.35); background: rgba(0,229,204,0.06); box-shadow: 0 0 0 3px rgba(0,229,204,0.06); }
-.inp::placeholder { color: var(--t3); font-size: 13px; }
-.inp.mono { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.1em; }
-.inp.center { text-align: center; letter-spacing: 0.3em; font-size: 18px; font-weight: 500; text-transform: uppercase; }
-
-.inp-row { display: flex; gap: 8px; }
-.inp-row .inp { flex: 1; }
-
-/* BUTTONS */
-.btn { width: 100%; background: transparent; border: 1px solid var(--c); border-radius: var(--r-sm); padding: 13px; color: var(--c); font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 13px; letter-spacing: 0.1em; cursor: pointer; position: relative; overflow: hidden; transition: box-shadow 0.2s, transform 0.1s; text-transform: uppercase; }
-.btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, transparent 0%, rgba(0,229,204,0.12) 100%); transform: translateX(-100%); transition: transform 0.3s ease; }
-.btn:hover::before, .btn:active::before { transform: translateX(0); }
-.btn:active { transform: scale(0.98); }
-.btn:hover { box-shadow: var(--glow-c); }
-.btn.solid { background: var(--c); color: var(--ink); border-color: var(--c); font-weight: 700; }
-.btn.solid::before { background: linear-gradient(135deg, transparent, rgba(0,0,0,0.1)); }
-.btn.danger { border-color: var(--m); color: var(--m); }
-.btn.danger::before { background: linear-gradient(135deg, transparent, rgba(255,77,141,0.12)); }
-.btn.sm { padding: 8px 16px; font-size: 11px; width: auto; }
-.btn.ghost { border-color: var(--rim); color: var(--t2); }
-
-/* AVATAR UPLOAD */
-.av-pick { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 20px; }
-.av-ring { width: 84px; height: 84px; border-radius: 50%; background: var(--ink3); border: 2px solid rgba(0,229,204,0.2); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; transition: border-color 0.3s, box-shadow 0.3s; }
-.av-ring:active { border-color: var(--c); box-shadow: 0 0 20px var(--c-glow), 0 0 0 4px rgba(0,229,204,0.08); }
-.av-ring img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-.av-ring-lbl { font-size: 28px; }
-.av-cam { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.55); height: 28px; display: flex; align-items: center; justify-content: center; font-size: 13px; backdrop-filter: blur(4px); }
-.av-hint { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); letter-spacing: 0.12em; }
-
-/* ZID badge preview */
-.zid-preview { display: flex; align-items: center; justify-content: center; gap: 10px; background: rgba(0,229,204,0.06); border: 1px solid rgba(0,229,204,0.15); border-radius: 10px; padding: 12px; margin-top: -4px; margin-bottom: 14px; }
-.zid-badge { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 22px; color: var(--c); letter-spacing: 0.15em; }
-.zid-badge-lbl { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); letter-spacing: 0.1em; }
-
-/* ── TOGGLE ── */
-.toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
-.toggle-lbl { font-size: 13px; color: var(--t1); }
-.toggle { width: 42px; height: 24px; border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid var(--rim); position: relative; cursor: pointer; transition: background 0.25s, border-color 0.25s; flex-shrink: 0; }
-.toggle.on { background: rgba(0,229,204,0.2); border-color: rgba(0,229,204,0.4); }
-.toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--t3); transition: transform 0.25s, background 0.25s; }
-.toggle.on::after { transform: translateX(18px); background: var(--c); box-shadow: 0 0 6px var(--c-glow); }
-
-/* AUTH FOOTER LINK */
-.auth-link { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--t3); text-align: center; margin-top: 16px; letter-spacing: 0.05em; }
-.auth-link span { color: var(--c); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
-
-/* ═══════════════════════════════════════
-   MAIN APP — MOBILE FIRST
-═══════════════════════════════════════ */
-#app { background: var(--ink); }
-
-/* Mobile: full-screen single column */
-.app-shell {
-  position: relative; z-index: 1;
-  display: flex; flex-direction: row;
-  width: 100%; height: 100dvh;
-  overflow: hidden;
-}
-
-.sidebar-panel {
-  display: flex; flex-direction: column;
-  width: 100%; flex-shrink: 0;
-  height: 100dvh; overflow: hidden;
-  background: var(--ink);
-}
-
-/* main-panel hidden on mobile — chat-view is fixed overlay */
-.main-panel { display: none; }
-
-/* No-chat placeholder — desktop only */
-.no-chat-ph {
-  display: none;
-}
-
-/* ── DESKTOP / TABLET LAYOUT ── */
-@media (min-width: 700px) {
-  body { background: var(--ink2); }
-
-  .app-shell { flex-direction: row; }
-
-  .sidebar-panel {
-    width: clamp(280px, 35vw, 420px);
-    flex-shrink: 0;
-    border-right: 1px solid var(--rim2);
-    background: var(--glass2);
-    backdrop-filter: blur(24px);
-  }
-
-  .main-panel {
-    display: flex; flex-direction: column;
-    flex: 1; height: 100dvh;
-    background: var(--ink); overflow: hidden;
-    position: relative;
-  }
-
-  /* On desktop chat-view sits inside main-panel, not fixed overlay */
-  #chat-view {
-    position: relative !important;
-    inset: auto !important;
-    transform: none !important;
-    transition: none !important;
-    flex: 1; flex-direction: column;
-    display: none;
-    background: var(--ink);
-    overflow: hidden;
-    height: 100%;
-  }
-  #chat-view.open { display: flex; }
-
-  /* No-chat placeholder */
-  .no-chat-ph {
-    display: flex; flex: 1;
-    flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 16px; color: var(--t3);
-    height: 100%;
-  }
-  .no-chat-ph.hide { display: none; }
-
-  /* Hide mobile back button */
-  .ch-back { display: none !important; }
-
-  /* Chat header no extra top padding on desktop */
-  .chat-header { padding-top: 14px !important; }
-
-  /* Modals center on desktop */
-  .modal-bg { align-items: center !important; }
-  .modal {
-    max-width: 480px;
-    border-radius: 20px !important;
-    border-bottom: 1px solid var(--rim) !important;
-    animation: mfadeUp 0.22s ease !important;
-  }
-  @keyframes mfadeUp { from{opacity:0;transform:scale(0.96) translateY(8px)} to{opacity:1;transform:none} }
-
-  /* Top bar keeps its border */
-  .top-bar { border-bottom: 1px solid var(--rim2); }
-
-  /* Toast at bottom left on desktop */
-  #toast { bottom: 24px; left: calc(clamp(280px,35vw,420px) + 24px); transform: translateX(0) translateY(14px); }
-  #toast.show { transform: translateX(0) translateY(0); }
-}
-
-/* TOP STATUS BAR */
-.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px; padding-top: max(14px, env(safe-area-inset-top)); flex-shrink: 0; }
-.tb-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; letter-spacing: 0.18em; color: var(--c); text-shadow: 0 0 14px rgba(0,229,204,0.4); }
-.tb-right { display: flex; align-items: center; gap: 10px; }
-
-.zid-chip { display: flex; align-items: center; gap: 6px; background: rgba(0,229,204,0.07); border: 1px solid rgba(0,229,204,0.15); border-radius: 20px; padding: 5px 10px; cursor: pointer; transition: background 0.2s; }
-.zid-chip:active { background: rgba(0,229,204,0.14); }
-.zid-chip .zc-id { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--c); letter-spacing: 0.1em; font-weight: 600; }
-.zid-chip .zc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--t3); transition: background 0.4s, box-shadow 0.4s; flex-shrink: 0; }
-.zid-chip .zc-dot.on { background: var(--green); box-shadow: 0 0 6px rgba(74,222,128,0.5); animation: dotPls 2.5s ease-in-out infinite; }
-.zid-chip .zc-dot.pend { background: var(--gold); box-shadow: 0 0 5px rgba(255,200,107,0.5); animation: dotPls 0.6s ease-in-out infinite; }
-@keyframes dotPls { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-/* NAV TABS */
-.nav { display: flex; border-bottom: 1px solid var(--rim2); padding: 0 20px; flex-shrink: 0; }
-.n-tab { flex: 1; background: none; border: none; color: var(--t3); font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; padding: 11px 0 10px; cursor: pointer; position: relative; transition: color 0.2s; text-transform: uppercase; }
-.n-tab::after { content: ''; position: absolute; bottom: -1px; left: 25%; right: 25%; height: 1.5px; background: var(--c); border-radius: 1px; transform: scaleX(0); transition: transform 0.3s cubic-bezier(.4,0,.2,1); box-shadow: 0 0 6px var(--c-glow); }
-.n-tab.on { color: var(--c); }
-.n-tab.on::after { transform: scaleX(1); }
-.nbadge { background: var(--m); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 600; border-radius: 8px; padding: 1px 5px; margin-left: 4px; box-shadow: var(--glow-m); animation: bdgp 2s ease-in-out infinite; vertical-align: 1px; }
-@keyframes bdgp { 0%,100%{opacity:1} 50%{opacity:0.7} }
-
-/* TAB PAGES */
-.tab-page { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-.tab-page.hide { display: none; }
-
-/* ═══════════════════════════════════════
-   CHATS LIST
-═══════════════════════════════════════ */
-
-/* SEARCH */
-.search-bar { padding: 12px 16px 10px; flex-shrink: 0; }
-.search-wrap { display: flex; align-items: center; gap: 9px; background: var(--glass3); border: 1px solid var(--rim2); border-radius: 12px; padding: 9px 14px; transition: border-color 0.2s; }
-.search-wrap:focus-within { border-color: rgba(0,229,204,0.2); }
-.search-wrap svg { color: var(--t3); flex-shrink: 0; }
-.search-inp { flex: 1; background: none; border: none; outline: none; color: var(--t1); font-family: 'Outfit', sans-serif; font-size: 13px; caret-color: var(--c); }
-.search-inp::placeholder { color: var(--t3); }
-
-/* ADD CONTACT ROW */
-.add-row { padding: 0 16px 10px; }
-.add-contact-btn { display: flex; align-items: center; gap: 10px; background: var(--glass3); border: 1px dashed rgba(0,229,204,0.18); border-radius: 12px; padding: 11px 14px; cursor: pointer; color: var(--t2); transition: border-color 0.2s, background 0.2s; font-size: 13px; font-weight: 500; width: 100%; }
-.add-contact-btn:active { background: rgba(0,229,204,0.06); border-color: rgba(0,229,204,0.35); }
-.add-icon { width: 32px; height: 32px; border-radius: 50%; background: rgba(0,229,204,0.08); border: 1px solid rgba(0,229,204,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-
-/* CONTACT ITEMS */
-.contact-list { flex: 1; overflow-y: auto; }
-.contact-list::-webkit-scrollbar { display: none; }
-
-.c-item { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; transition: background 0.15s; position: relative; border-bottom: 1px solid var(--rim2); }
-.c-item:active { background: rgba(0,229,204,0.04); }
-.c-item.selected { background: rgba(0,229,204,0.05); }
-.c-item.selected::before { content: ''; position: absolute; left: 0; top: 20%; bottom: 20%; width: 2px; background: var(--c); border-radius: 0 1px 1px 0; box-shadow: 0 0 6px var(--c-glow); }
-
-.av { width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0; position: relative; overflow: visible; }
-.av-inner { width: 50px; height: 50px; border-radius: 50%; background: var(--ink3); border: 1.5px solid var(--rim); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: var(--c); overflow: hidden; transition: border-color 0.3s; }
-.av-inner img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-.av.online .av-inner { border-color: rgba(0,229,204,0.45); }
-.av-status { position: absolute; bottom: 1px; right: 1px; width: 11px; height: 11px; border-radius: 50%; background: var(--t3); border: 2px solid var(--ink); z-index: 2; transition: background 0.3s; }
-.av.online .av-status { background: var(--green); box-shadow: 0 0 5px rgba(74,222,128,0.5); }
-
-.c-body { flex: 1; min-width: 0; }
-.c-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
-.c-name { font-weight: 600; font-size: 14.5px; color: var(--t1); }
-.c-time { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); flex-shrink: 0; }
-.c-foot { display: flex; justify-content: space-between; align-items: center; }
-.c-preview { font-size: 12.5px; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
-.c-preview.unread { color: var(--t1); font-weight: 500; }
-.c-badge { background: var(--c); color: var(--ink); border-radius: 10px; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; padding: 2px 7px; margin-left: 8px; flex-shrink: 0; box-shadow: 0 0 8px rgba(0,229,204,0.35); }
-.c-muted-icon { color: var(--t3); margin-left: 6px; font-size: 11px; flex-shrink: 0; }
-
-/* EMPTY STATE */
-.empty-page { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 40px; }
-.empty-glyph { width: 64px; height: 64px; border-radius: 50%; background: var(--glass3); border: 1px solid var(--rim); display: flex; align-items: center; justify-content: center; font-size: 28px; opacity: 0.4; }
-.empty-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--t2); text-align: center; letter-spacing: 0.05em; }
-.empty-body { font-size: 12px; color: var(--t3); text-align: center; line-height: 1.7; max-width: 240px; }
-
-/* ═══════════════════════════════════════
-   CHAT VIEW
-═══════════════════════════════════════ */
-#chat-view { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--ink); transform: translateX(100%); transition: transform 0.32s cubic-bezier(0.4,0,0.2,1); }
-#chat-view.open { transform: translateX(0); }
-
-/* CHAT HEADER */
-.chat-header { display: flex; align-items: center; gap: 10px; padding: 11px 14px; padding-top: max(11px, env(safe-area-inset-top)); background: var(--glass2); border-bottom: 1px solid var(--rim2); backdrop-filter: blur(20px); flex-shrink: 0; position: relative; }
-
-.ch-back { background: none; border: none; color: var(--t2); cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 10px; transition: background 0.15s, color 0.15s; flex-shrink: 0; }
-.ch-back:active { background: rgba(0,229,204,0.1); color: var(--c); }
-
-.ch-av { width: 40px; height: 40px; border-radius: 50%; background: var(--ink3); border: 1.5px solid var(--rim); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px; color: var(--c); flex-shrink: 0; overflow: hidden; transition: border-color 0.3s; cursor: pointer; }
-.ch-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-.ch-av.online { border-color: rgba(74,222,128,0.5); }
-
-.ch-info { flex: 1; min-width: 0; }
-.ch-name { font-weight: 600; font-size: 15px; color: var(--t1); }
-.ch-sub { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); margin-top: 1px; letter-spacing: 0.06em; }
-.ch-sub.on { color: var(--green); }
-.ch-sub.off { color: var(--m); }
-
-.ch-actions { display: flex; gap: 4px; align-items: center; }
-.ch-btn { background: none; border: none; color: var(--t3); cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 10px; transition: background 0.15s, color 0.15s; flex-shrink: 0; }
-.ch-btn:active { background: rgba(0,229,204,0.1); color: var(--c); }
-.ch-btn.call-v:active { color: var(--m); background: var(--m-dim); }
-
-/* MESSAGES AREA */
-.msg-area { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 14px 8px; display: flex; flex-direction: column; gap: 2px; scroll-behavior: smooth; }
-.msg-area::-webkit-scrollbar { display: none; }
-
-/* DATE DIVIDER */
-.date-div { text-align: center; margin: 10px 0 6px; display: flex; align-items: center; gap: 10px; }
-.date-div::before, .date-div::after { content: ''; flex: 1; height: 1px; background: var(--rim2); }
-.date-div span { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; color: var(--t3); letter-spacing: 0.12em; white-space: nowrap; padding: 0 4px; }
-
-/* MSG ROWS */
-.msg-row { display: flex; flex-direction: column; margin-bottom: 3px; max-width: 78%; animation: msgAppear 0.2s ease-out; }
-@keyframes msgAppear { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
-.msg-row.out { align-self: flex-end; align-items: flex-end; }
-.msg-row.in  { align-self: flex-start; align-items: flex-start; }
-.msg-row + .msg-row.out { margin-top: 1px; }
-.msg-row + .msg-row.in  { margin-top: 1px; }
-.msg-row.gap { margin-top: 8px; }
-
-/* SENDER NAME (group context) */
-.msg-sender { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--c); margin-bottom: 3px; margin-left: 2px; letter-spacing: 0.05em; }
-
-/* BUBBLES */
-.bubble { padding: 9px 13px; border-radius: 16px; font-size: 14px; line-height: 1.55; word-break: break-word; position: relative; }
-.msg-row.out .bubble { background: linear-gradient(135deg, rgba(0,229,204,0.12), rgba(0,229,204,0.07)); border: 1px solid rgba(0,229,204,0.2); border-bottom-right-radius: 4px; color: #d4f7f2; }
-.msg-row.in  .bubble { background: var(--glass3); border: 1px solid var(--rim); border-bottom-left-radius: 4px; color: var(--t1); }
-
-/* Meta row */
-.msg-meta { display: flex; align-items: center; gap: 4px; margin-top: 3px; padding: 0 3px; }
-.msg-time { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; color: var(--t3); }
-.msg-tick { font-size: 9px; color: var(--t3); }
-.msg-tick.sent  { color: var(--t3); }
-.msg-tick.read  { color: var(--c); }
-
-/* SYSTEM LINE */
-.sys-msg { align-self: center; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); background: rgba(255,255,255,0.025); border: 1px solid var(--rim2); border-radius: 20px; padding: 3px 12px; margin: 6px 0; letter-spacing: 0.08em; }
-
-/* CALL LOG */
-.call-log { align-self: center; display: flex; align-items: center; gap: 8px; background: rgba(0,229,204,0.04); border: 1px solid rgba(0,229,204,0.1); border-radius: 20px; padding: 6px 14px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t2); letter-spacing: 0.06em; margin: 4px 0; }
-.call-log.missed { border-color: rgba(255,77,141,0.15); background: rgba(255,77,141,0.04); color: var(--m); }
-.call-log-icon { font-size: 13px; }
-.call-dur { color: var(--t3); margin-left: 4px; }
-
-/* FILE BUBBLE */
-.file-bub { display: flex; align-items: center; gap: 11px; padding: 10px 13px; border-radius: 14px; min-width: 200px; max-width: 290px; }
-.msg-row.out .file-bub { background: rgba(0,229,204,0.08); border: 1px solid rgba(0,229,204,0.18); }
-.msg-row.in  .file-bub { background: var(--glass3); border: 1px solid var(--rim); }
-.f-icon-box { width: 38px; height: 38px; border-radius: 9px; background: rgba(0,229,204,0.08); border: 1px solid rgba(0,229,204,0.14); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-.f-dets { flex: 1; min-width: 0; }
-.f-nm { font-size: 12px; font-weight: 600; color: var(--t1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px; }
-.f-sz { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); }
-.prog-b { margin-top: 5px; }
-.prog-track { height: 3px; border-radius: 2px; background: var(--rim); overflow: hidden; }
-.prog-fill { height: 100%; background: linear-gradient(90deg, var(--m), var(--c)); border-radius: 2px; transition: width 0.12s; }
-.prog-lbl { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--c); margin-top: 3px; }
-.dl-btn { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--c); text-decoration: none; margin-top: 3px; display: inline-block; letter-spacing: 0.05em; }
-.dl-btn:hover { text-decoration: underline; }
-
-/* VOICE NOTE */
-.vn-bub { display: flex; align-items: center; gap: 10px; padding: 9px 13px; border-radius: 14px; min-width: 210px; }
-.msg-row.out .vn-bub { background: rgba(0,229,204,0.08); border: 1px solid rgba(0,229,204,0.18); }
-.msg-row.in  .vn-bub { background: var(--glass3); border: 1px solid var(--rim); }
-.vn-play { width: 34px; height: 34px; border-radius: 50%; background: rgba(0,229,204,0.12); border: 1px solid rgba(0,229,204,0.25); display: flex; align-items: center; justify-content: center; color: var(--c); cursor: pointer; flex-shrink: 0; transition: background 0.2s; }
-.vn-play:active { background: rgba(0,229,204,0.22); }
-.vn-wave { flex: 1; display: flex; align-items: center; gap: 2px; height: 28px; overflow: hidden; }
-.vn-bar { width: 3px; border-radius: 2px; background: rgba(0,229,204,0.3); flex-shrink: 0; transition: background 0.15s; }
-.vn-playing .vn-bar { background: var(--c); animation: barDance 0.6s ease-in-out infinite alternate; }
-.vn-bar:nth-child(odd) { animation-delay: 0.1s; }
-.vn-bar:nth-child(3n) { animation-delay: 0.2s; }
-@keyframes barDance { from { transform: scaleY(0.4); } to { transform: scaleY(1.1); } }
-.vn-dur { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); flex-shrink: 0; }
-
-/* INPUT BAR */
-.input-bar { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom)); background: var(--glass2); border-top: 1px solid var(--rim2); backdrop-filter: blur(20px); flex-shrink: 0; }
-.ib-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--glass3); border: 1px solid var(--rim); display: flex; align-items: center; justify-content: center; color: var(--t3); cursor: pointer; flex-shrink: 0; transition: color 0.2s, background 0.2s, border-color 0.2s, box-shadow 0.2s; }
-.ib-btn:active { color: var(--c); background: rgba(0,229,204,0.1); border-color: rgba(0,229,204,0.25); }
-.ib-btn.recording { color: var(--m); background: var(--m-dim); border-color: rgba(255,77,141,0.3); animation: recPls 0.9s ease-in-out infinite; }
-@keyframes recPls { 0%,100% { box-shadow: 0 0 0 0 rgba(255,77,141,0.3); } 50% { box-shadow: 0 0 0 8px rgba(255,77,141,0); } }
-.ib-txt { flex: 1; background: var(--glass3); border: 1px solid var(--rim); border-radius: 12px; padding: 10px 14px; color: var(--t1); font-family: 'Outfit', sans-serif; font-size: 14px; line-height: 1.4; outline: none; resize: none; max-height: 100px; transition: border-color 0.2s; caret-color: var(--c); }
-.ib-txt:focus { border-color: rgba(0,229,204,0.22); }
-.ib-txt::placeholder { color: var(--t3); font-size: 13px; }
-.send-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--c); border: none; display: flex; align-items: center; justify-content: center; color: var(--ink); cursor: pointer; flex-shrink: 0; transition: transform 0.15s, box-shadow 0.2s, background 0.2s; box-shadow: 0 2px 12px rgba(0,229,204,0.3); }
-.send-btn:active { transform: scale(0.9); box-shadow: none; }
-.send-btn:hover { background: #00ffde; box-shadow: 0 4px 20px rgba(0,229,204,0.45); }
-
-/* ═══════════════════════════════════════
-   DROPDOWN MENU
-═══════════════════════════════════════ */
-.dd { position: absolute; right: 12px; top: 100%; z-index: 300; min-width: 185px; background: var(--glass2); border: 1px solid rgba(0,229,204,0.2); border-radius: 14px; overflow: hidden; backdrop-filter: blur(28px); box-shadow: var(--shadow), 0 0 30px rgba(0,0,0,0.3); animation: ddSlide 0.15s ease-out; margin-top: 4px; }
-@keyframes ddSlide { from { opacity:0; transform:scale(0.95) translateY(-6px); } to { opacity:1; transform:none; } }
-.dd-item { display: flex; align-items: center; gap: 11px; padding: 12px 16px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--t1); transition: background 0.12s; border-bottom: 1px solid var(--rim2); }
-.dd-item:last-child { border-bottom: none; }
-.dd-item:active { background: rgba(0,229,204,0.07); }
-.dd-item.red { color: var(--red); }
-.dd-item.red:active { background: rgba(248,113,113,0.06); }
-.dd-item svg { opacity: 0.65; flex-shrink: 0; }
-.dd-sep { height: 1px; background: var(--rim2); margin: 4px 0; }
-
-/* ═══════════════════════════════════════
-   CALL OVERLAY
-═══════════════════════════════════════ */
-#call-ov { position: fixed; inset: 0; z-index: 400; display: flex; flex-direction: column; background: var(--ink); transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); overflow: hidden; }
-#call-ov.open { transform: translateY(0); }
-#call-ov::before { content:''; position:absolute; inset:0; background: radial-gradient(ellipse at 50% 0%, rgba(0,229,204,0.06), transparent 60%); pointer-events:none; }
-
-.co-top { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 40px 24px 20px; }
-.co-av { width: 100px; height: 100px; border-radius: 50%; background: var(--ink3); border: 2px solid rgba(0,229,204,0.3); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 36px; color: var(--c); overflow: hidden; animation: co-pulse 2.5s ease-in-out infinite; box-shadow: 0 0 0 0 rgba(0,229,204,0.2); }
-@keyframes co-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,229,204,0.2),0 0 30px rgba(0,229,204,0.1)} 50%{box-shadow:0 0 0 16px rgba(0,229,204,0),0 0 50px rgba(0,229,204,0.18)} }
-.co-av img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
-.co-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 22px; color: var(--t1); letter-spacing: 0.05em; }
-.co-zid { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--c); letter-spacing: 0.15em; }
-.co-status { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); letter-spacing: 0.12em; }
-.co-timer { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 600; color: var(--c); letter-spacing: 0.08em; text-shadow: var(--glow-c); }
-.vid-area { width: calc(100% - 32px); max-height: 200px; background: var(--ink3); border: 1px solid var(--rim); border-radius: 14px; display: none; align-items: center; justify-content: center; overflow: hidden; position: relative; margin: 0 16px; }
-.vid-area.show { display: flex; }
-#rem-vid, #loc-vid { position: absolute; width:100%; height:100%; object-fit:cover; border-radius:14px; }
-#loc-vid { width:80px; height:110px; bottom:8px; right:8px; border-radius:8px; border:1px solid var(--c); z-index:2; }
-.vid-ph { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--t3); letter-spacing:.15em; position:relative;z-index:3; }
-
-.co-btns { padding: 16px 24px 40px; display: flex; justify-content: center; gap: 18px; align-items: flex-end; }
-.co-btn-wrap { display: flex; flex-direction: column; align-items: center; gap: 7px; }
-.co-btn { width: 60px; height: 60px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.15s, box-shadow 0.2s; }
-.co-btn:active { transform: scale(0.88); }
-.co-btn.end { background: var(--m); box-shadow: 0 4px 20px rgba(255,77,141,0.4); }
-.co-btn.act { background: rgba(0,229,204,0.12); border: 1px solid rgba(0,229,204,0.22); color: var(--c); }
-.co-btn.act.muted { background: var(--m-dim); border-color: rgba(255,77,141,0.25); color: var(--m); }
-.co-lbl { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--t3); letter-spacing: 0.1em; text-align: center; }
-
-/* ═══════════════════════════════════════
-   PROFILE TAB
-═══════════════════════════════════════ */
-.prof-scroll { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
-.prof-scroll::-webkit-scrollbar { display:none; }
-
-/* Profile hero */
-.prof-hero { background: var(--glass); border: 1px solid var(--rim); border-radius: 20px; padding: clamp(16px,3vw,24px); display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative; }
-.prof-hero::before { content:''; position:absolute; top:0;left:0;right:0; height:1px; background: linear-gradient(90deg, transparent, var(--c), transparent); opacity:0.5; border-radius: 20px 20px 0 0; }
-.prof-big-av { width: 82px; height: 82px; border-radius: 50%; background: var(--ink3); border: 2px solid rgba(0,229,204,0.3); display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 30px; color: var(--c); overflow: hidden; cursor: pointer; transition: border-color 0.3s, box-shadow 0.3s; box-shadow: 0 0 24px rgba(0,229,204,0.1), 0 0 0 4px rgba(0,229,204,0.06); }
-.prof-big-av:active { border-color: var(--c); box-shadow: 0 0 30px rgba(0,229,204,0.25), 0 0 0 6px rgba(0,229,204,0.1); }
-.prof-big-av img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
-.prof-bigname { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--t1); letter-spacing: 0.03em; }
-.prof-nick { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t2); letter-spacing: 0.1em; }
-.prof-status-text { font-size: 12px; color: var(--t3); font-style: italic; }
-.zid-pill { display: flex; align-items: center; gap: 8px; background: rgba(0,229,204,0.06); border: 1px solid rgba(0,229,204,0.18); border-radius: 20px; padding: 7px 16px; cursor: pointer; transition: background 0.2s; }
-.zid-pill:active { background: rgba(0,229,204,0.12); }
-.zid-pill-id { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 16px; color: var(--c); letter-spacing: 0.2em; }
-.zid-pill-lbl { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: var(--t3); letter-spacing: 0.1em; }
-.zid-pill-copy { font-size: 11px; color: var(--t3); }
-
-/* SETTINGS SECTIONS */
-.sett-section { background: var(--glass); border: 1px solid var(--rim); border-radius: 16px; overflow: hidden; }
-.sett-head { padding: 12px 16px 8px; font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); letter-spacing: 0.2em; text-transform: uppercase; border-bottom: 1px solid var(--rim2); }
-.sett-item { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--rim2); transition: background 0.12s; }
-.sett-item:last-child { border-bottom: none; }
-.sett-item.tap { cursor: pointer; }
-.sett-item.tap:active { background: rgba(0,229,204,0.04); }
-.sett-icon { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; }
-.ic-teal { background: rgba(0,229,204,0.1); }
-.ic-gold { background: rgba(255,200,107,0.1); }
-.ic-red  { background: rgba(248,113,113,0.1); }
-.ic-blue { background: rgba(100,160,255,0.1); }
-.sett-body { flex: 1; min-width: 0; }
-.sett-lbl { font-size: 13.5px; font-weight: 500; color: var(--t1); }
-.sett-sub { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); margin-top: 2px; }
-.sett-right { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--t3); flex-shrink: 0; max-width: 55%; min-width: 0; overflow: hidden; }
-.sett-chev { color: var(--t3); opacity: 0.5; }
-
-/* EDIT FIELD */
-.edit-inp { background: rgba(0,229,204,0.05); border: none; border-bottom: 1px solid rgba(0,229,204,0.2); color: var(--c); font-family: 'Outfit', sans-serif; font-size: 13px; outline: none; width: clamp(80px,20vw,130px); padding: 2px 4px; caret-color: var(--c); text-align: right; min-width: 0; }
-.save-mini { font-family: 'JetBrains Mono', monospace; font-size: 8px; background: rgba(0,229,204,0.1); border: 1px solid rgba(0,229,204,0.25); border-radius: 5px; color: var(--c); padding: 3px 8px; cursor: pointer; letter-spacing: 0.08em; transition: background 0.2s; white-space: nowrap; flex-shrink: 0; }
-.save-mini:active { background: rgba(0,229,204,0.22); }
-
-/* NO-CHAT PLACEHOLDER */
-.no-chat-glyph { font-size: 52px; opacity: 0.15; line-height: 1; }
-.no-chat-lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .2em; opacity: .35; text-transform: uppercase; }
-.no-chat-hint { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--t3); letter-spacing: .08em; opacity: .4; margin-top: 4px; text-align: center; line-height: 1.7; }
-
-/* ═══════════════════════════════════════
-   MODALS
-═══════════════════════════════════════ */
-.modal-bg { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; align-items: flex-end; justify-content: center; animation: mfade 0.2s ease; }
-@keyframes mfade { from{opacity:0} to{opacity:1} }
-.modal { width: 100%; max-width: 100%; background: var(--glass2); border: 1px solid var(--rim); border-bottom: none; border-radius: 22px 22px 0 0; padding: 22px clamp(16px,4vw,24px) max(24px, env(safe-area-inset-bottom)); box-shadow: var(--shadow); animation: mslide 0.25s cubic-bezier(.4,0,.2,1); }
-@keyframes mslide { from{transform:translateY(100%)} to{transform:translateY(0)} }
-.modal::before { content:''; display:block; width:36px; height:3px; background:rgba(255,255,255,0.12); border-radius:2px; margin:0 auto 18px; }
-.modal-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--t1); margin-bottom: 6px; }
-.modal-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--t3); margin-bottom: 20px; line-height: 1.7; }
-.modal-row { display: flex; gap: 10px; margin-top: 16px; }
-
-/* CONTACT DETAIL MODAL */
-.contact-detail { text-align: center; }
-.cd-av { width: 72px; height: 72px; border-radius: 50%; background: var(--ink3); border: 2px solid rgba(0,229,204,0.25); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-family:'Syne',sans-serif; font-weight:800; font-size:26px; color:var(--c); overflow:hidden; }
-.cd-av img { width:100%;height:100%;object-fit:cover;border-radius:50%; }
-.cd-name { font-family:'Syne',sans-serif; font-weight:700; font-size:18px; color:var(--t1); margin-bottom:4px; }
-.cd-nick { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--t3); letter-spacing:.1em; margin-bottom:8px; }
-.cd-zid { display:inline-flex; align-items:center; gap:6px; background:rgba(0,229,204,.07); border:1px solid rgba(0,229,204,.15); border-radius:20px; padding:5px 14px; font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; color:var(--c); letter-spacing:.15em; cursor:pointer; }
-.cd-zid:active { background:rgba(0,229,204,.14); }
-.cd-info-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--rim2); font-size:12.5px; }
-.cd-info-row:last-child { border-bottom:none; }
-.cd-key { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--t3); letter-spacing:.12em; }
-.cd-val { color:var(--t2); font-size:12px; }
-
-/* ADD CONTACT MODAL */
-.zid-big-inp { width:100%; text-align:center; background:rgba(0,229,204,0.05); border:1px solid rgba(0,229,204,0.2); border-radius:12px; padding:16px; color:var(--c); font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:600; letter-spacing:.4em; outline:none; caret-color:var(--c); text-transform:uppercase; }
-.zid-big-inp:focus { border-color:rgba(0,229,204,.4); box-shadow:0 0 0 4px rgba(0,229,204,.06); }
-.zid-big-inp::placeholder { font-size:14px; letter-spacing:.2em; color:var(--t3); }
-
-/* TOAST */
-#toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(14px); background:var(--glass2); border:1px solid var(--rim); border-radius:10px; padding:9px 18px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--c); z-index:9999; opacity:0; transition:opacity .22s,transform .22s; white-space:nowrap; backdrop-filter:blur(20px); pointer-events:none; box-shadow:var(--shadow-sm); letter-spacing:.05em; }
-#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-
-/* DROP ZONE */
-#drop-ov { display:none; position:fixed; inset:0; z-index:300; border:2px dashed rgba(0,229,204,.4); background:rgba(5,8,15,.9); backdrop-filter:blur(8px); align-items:center; justify-content:center; flex-direction:column; gap:14px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--c); letter-spacing:.15em; pointer-events:none; }
-#drop-ov.on { display:flex; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexus X | Secure P2P</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --accent: #6366f1;
+            --bg-dark: #0f172a;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at 50% -20%, #1e1b4b, #0f172a);
+            color: #e2e8f0;
+            font-family: 'Inter', system-ui, sans-serif;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        .glass { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--border); }
+        
+        /* Message Bubbles */
+        .msg-sent { background: linear-gradient(135deg, #6366f1, #4f46e5); border-radius: 18px 18px 4px 18px; }
+        .msg-received { background: rgba(255,255,255,0.07); border: 1px solid var(--border); border-radius: 18px 18px 18px 4px; }
+
+        /* Animations */
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .recording { animation: pulse-red 1.5s infinite; background: #ef4444 !important; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    </style>
 </head>
-<body>
-<div id="amb"></div>
+<body class="flex items-center justify-center p-0 sm:p-4">
 
-<!-- ════════════════════════════════════
-  ONBOARDING
-════════════════════════════════════ -->
-<div class="screen" id="ob">
-  <div class="auth-bg"></div>
-  <div class="auth-center">
-    <div class="brand"><div class="brand-logo">NEXUS</div><div class="brand-sub">Encrypted · P2P · Zero-Server</div></div>
-
-    <div class="g-card" id="ob-card">
-      <!-- Step indicators -->
-      <div class="steps">
-        <div class="step-pip active" id="p0"></div>
-        <div class="step-pip idle" id="p1"></div>
-        <div class="step-pip idle" id="p2"></div>
-      </div>
-
-      <!-- STEP 0 -->
-      <div id="s0">
-        <div class="card-title">Create your identity</div>
-        <div class="f-group">
-          <label class="f-label">Full Name</label>
-          <input class="inp" id="ob-fn" type="text" placeholder="Your full name" maxlength="40" autocomplete="off">
-        </div>
-        <div class="f-group">
-          <label class="f-label">Nick / Callsign</label>
-          <input class="inp" id="ob-nk" type="text" placeholder="e.g. Ghost_7" maxlength="24" autocomplete="off">
-          <div class="f-hint">This is shown to other users in chats.</div>
-        </div>
-        <button class="btn" onclick="obGo(1)">Continue →</button>
-      </div>
-
-      <!-- STEP 1 -->
-      <div id="s1" class="hide">
-        <div class="card-title">Choose your Z-ID</div>
-        <div class="card-desc">// Your Z-ID is a unique 4-character address — 3 letters followed by 1 digit. It's permanent and used by peers to find you.</div>
-        <div class="av-pick">
-          <div class="av-ring" id="ob-av" onclick="document.getElementById('ob-av-f').click()">
-            <span class="av-ring-lbl" id="ob-av-lbl">◈</span>
-            <img id="ob-av-img" src="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%">
-            <div class="av-cam">📷</div>
-          </div>
-          <input type="file" id="ob-av-f" accept="image/*" style="display:none" onchange="obAvChange(event)">
-          <div class="av-hint">TAP TO SET AVATAR</div>
-        </div>
-        <div class="f-group">
-          <label class="f-label">Your Z-ID</label>
-          <input class="inp center" id="ob-zid" type="text" placeholder="ABC1" maxlength="4" autocomplete="off" oninput="onZidInput(this,'zid-prev-val')">
-        </div>
-        <div class="zid-preview" id="zid-prev">
-          <div><div class="zid-badge-lbl">YOUR Z-ID</div><div class="zid-badge" id="zid-prev-val">—</div></div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t3);line-height:1.8">3 LETTERS + 1 DIGIT<br>MUST BE UNIQUE</div>
-        </div>
-        <button class="btn" onclick="obGo(2)">Continue →</button>
-      </div>
-
-      <!-- STEP 2 -->
-      <div id="s2" class="hide">
-        <div class="card-title">Secure your account</div>
-        <div class="f-group">
-          <label class="f-label">Password</label>
-          <input class="inp" id="ob-pw" type="password" placeholder="Min 6 characters" maxlength="60" autocomplete="new-password">
-        </div>
-        <div class="f-group">
-          <label class="f-label">Confirm Password</label>
-          <input class="inp" id="ob-pw2" type="password" placeholder="Repeat password" maxlength="60" autocomplete="new-password">
-        </div>
-        <button class="btn solid" onclick="obFinish()">Create Account →</button>
-      </div>
-    </div>
-    <div class="auth-link">Already registered? <span onclick="goScreen('lg')">Sign in →</span></div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════
-  LOGIN
-════════════════════════════════════ -->
-<div class="screen hide" id="lg">
-  <div class="auth-bg"></div>
-  <div class="auth-center">
-    <div class="brand"><div class="brand-logo">NEXUS</div><div class="brand-sub">Sign in to your node</div></div>
-    <div class="g-card">
-      <div class="card-title">Welcome back</div>
-      <div class="f-group">
-        <label class="f-label">Your Z-ID</label>
-        <input class="inp center" id="lg-zid" type="text" placeholder="ABC1" maxlength="4" autocomplete="off" oninput="onZidInput(this,'lg-zid-disp')">
-        <div class="zid-preview" style="margin-top:8px">
-          <div class="zid-badge" id="lg-zid-disp" style="font-size:18px">—</div>
-        </div>
-      </div>
-      <div class="f-group">
-        <label class="f-label">Password</label>
-        <input class="inp" id="lg-pw" type="password" placeholder="Your password" maxlength="60" autocomplete="current-password">
-      </div>
-      <button class="btn solid" onclick="doLogin()">Sign In →</button>
-    </div>
-    <div class="auth-link">No account? <span onclick="goScreen('ob')">Register →</span></div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════
-  MAIN APP
-════════════════════════════════════ -->
-<div class="screen hide" id="app">
-  <div class="app-shell">
-    <div class="sidebar-panel">
-
-    <div class="top-bar">
-      <div class="tb-logo">NEXUS</div>
-      <div class="tb-right">
-        <div class="zid-chip" onclick="copyZid()" id="zid-chip">
-          <div class="zc-dot pend" id="net-dot"></div>
-          <div class="zc-id" id="zid-disp">···</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="nav">
-      <button class="n-tab on" id="t-chats" onclick="goTab('chats')">Chats <span class="nbadge hide" id="nb">0</span></button>
-      <button class="n-tab" id="t-profile" onclick="goTab('profile')">Profile</button>
-    </div>
-
-    <!-- CHATS TAB -->
-    <div class="tab-page" id="pg-chats">
-      <div class="search-bar">
-        <div class="search-wrap">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="search-inp" id="search-inp" placeholder="Search conversations…" oninput="filterContacts(this.value)">
-        </div>
-      </div>
-      <div class="add-row">
-        <div class="add-contact-btn" onclick="showAddContact()">
-          <div class="add-icon"><svg width="14" height="14" fill="none" stroke="var(--c)" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-          <span>New connection</span>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t3);margin-left:auto">by Z-ID</span>
-        </div>
-      </div>
-      <div class="contact-list sr" id="contact-list">
-        <div class="empty-page" id="empty-page">
-          <div class="empty-glyph">◈</div>
-          <div class="empty-title">No conversations</div>
-          <div class="empty-body">Add a contact by their Z-ID — or share your Z-ID and they'll appear automatically when they connect to you.</div>
-        </div>
-        <div id="clist"></div>
-      </div>
-    </div>
-
-    <!-- PROFILE TAB -->
-    <div class="tab-page hide" id="pg-profile">
-      <div class="prof-scroll sr">
-
-        <!-- HERO -->
-        <div class="prof-hero">
-          <div class="prof-big-av" id="p-av" onclick="document.getElementById('p-av-f').click()">
-            <span id="p-av-init">◈</span>
-          </div>
-          <input type="file" id="p-av-f" accept="image/*" style="display:none" onchange="profAvChange(event)">
-          <div class="prof-bigname" id="p-bigname">—</div>
-          <div class="prof-nick" id="p-nick-d">—</div>
-          <div class="prof-status-text" id="p-status-d">—</div>
-          <div class="zid-pill" onclick="copyZid()">
-            <div><div class="zid-pill-lbl">Z-ID</div><div class="zid-pill-id" id="p-zid-d">—</div></div>
-            <div class="zid-pill-copy">📋</div>
-          </div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t3);text-align:center;line-height:1.8;margin-top:-4px">Share your Z-ID so others can add you<br><span style="color:var(--c);opacity:.7">No account required on their end to add you first</span></div>
-        </div>
-
-        <!-- EDIT PROFILE -->
-        <div class="sett-section">
-          <div class="sett-head">Edit Profile</div>
-          <div class="sett-item">
-            <div class="sett-icon ic-teal">✏️</div>
-            <div class="sett-body"><div class="sett-lbl">Display Name</div><div class="sett-sub" id="sub-fn">—</div></div>
-            <div class="sett-right"><input class="edit-inp" id="e-fn" value="" maxlength="40"><button class="save-mini" onclick="saveF('fn')">SAVE</button></div>
-          </div>
-          <div class="sett-item">
-            <div class="sett-icon ic-teal">🏷️</div>
-            <div class="sett-body"><div class="sett-lbl">Callsign</div><div class="sett-sub" id="sub-nk">—</div></div>
-            <div class="sett-right"><input class="edit-inp" id="e-nk" value="" maxlength="24"><button class="save-mini" onclick="saveF('nk')">SAVE</button></div>
-          </div>
-          <div class="sett-item">
-            <div class="sett-icon ic-gold">💬</div>
-            <div class="sett-body"><div class="sett-lbl">Status</div><div class="sett-sub" id="sub-st">—</div></div>
-            <div class="sett-right"><input class="edit-inp" id="e-st" value="" maxlength="40" placeholder="e.g. Available"><button class="save-mini" onclick="saveF('st')">SAVE</button></div>
-          </div>
-        </div>
-
-        <!-- NODE INFO -->
-        <div class="sett-section">
-          <div class="sett-head">Node Info</div>
-          <div class="sett-item">
-            <div class="sett-icon ic-teal">◈</div>
-            <div class="sett-body"><div class="sett-lbl">Z-ID</div><div class="sett-sub">Your unique address</div></div>
-            <div class="sett-right" style="cursor:pointer" onclick="copyZid()"><span id="ir-zid" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--c);letter-spacing:.15em;font-weight:600">—</span></div>
-          </div>
-          <div class="sett-item">
-            <div class="sett-icon ic-blue">🔗</div>
-            <div class="sett-body"><div class="sett-lbl">Node ID</div><div class="sett-sub" id="ir-nid" style="word-break:break-all;font-size:8px">—</div></div>
-            <div class="sett-right" style="cursor:pointer" onclick="copyNodeId()"><span style="font-size:10px;color:var(--t3)">copy</span></div>
-          </div>
-          <div class="sett-item">
-            <div class="sett-icon ic-teal">⚡</div>
-            <div class="sett-body"><div class="sett-lbl">Network</div></div>
-            <div class="sett-right" id="ir-net">
-              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3)">Offline</span>
+    <!-- Login Overlay -->
+    <div id="authScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md">
+        <div class="glass p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl">
+            <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-indigo-500/40 shadow-lg">
+                <i class="fas fa-terminal text-2xl text-white"></i>
             </div>
-          </div>
-          <div class="sett-item">
-            <div class="sett-icon ic-blue">👥</div>
-            <div class="sett-body"><div class="sett-lbl">Active Peers</div></div>
-            <div class="sett-right"><span id="ir-peers" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--c)">0</span></div>
-          </div>
-          <div class="sett-item">
-            <div class="sett-icon ic-blue">🔒</div>
-            <div class="sett-body"><div class="sett-lbl">Protocol</div></div>
-            <div class="sett-right"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--t3)">DTLS-SRTP</span></div>
-          </div>
+            <h1 class="text-2xl font-bold mb-2">Nexus Node</h1>
+            <p class="text-slate-400 text-sm mb-8">Enter your credentials to join the mesh.</p>
+            
+            <input type="text" id="nodeName" placeholder="Display Name" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-3 focus:outline-none focus:border-indigo-500">
+            <input type="text" id="nodeId" placeholder="Nexus ID (Unique)" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-indigo-500">
+            
+            <button onclick="initNexus()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20">
+                Initialize Connection
+            </button>
+        </div>
+    </div>
+
+    <!-- Layout -->
+    <div id="mainApp" class="hidden w-full h-full max-w-6xl flex gap-4">
+        
+        <!-- Sidebar -->
+        <div id="sidebar" class="glass w-full sm:w-80 rounded-3xl flex flex-col overflow-hidden transition-all">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold tracking-tight">Messages</h2>
+                    <div class="flex gap-2">
+                        <button onclick="showAddContact()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-indigo-600 transition-all">
+                            <i class="fas fa-plus text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Card -->
+                <div class="bg-indigo-600/10 border border-indigo-500/20 rounded-2xl p-3 mb-6">
+                    <div class="flex items-center gap-3">
+                        <div id="myNodeAvatar" class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white">?</div>
+                        <div class="flex-1 min-w-0">
+                            <p id="myNodeName" class="text-xs font-bold truncate">Loading...</p>
+                            <p id="myNodeId" class="text-[10px] text-indigo-400 font-mono uppercase">ID: ----</p>
+                        </div>
+                        <div class="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e]"></div>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                    <input type="text" placeholder="Search decrypted chats..." class="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm">
+                </div>
+            </div>
+
+            <div id="contactList" class="flex-1 overflow-y-auto px-1">
+                <!-- Contacts will be injected here -->
+            </div>
         </div>
 
-        <!-- PREFERENCES -->
-        <div class="sett-section">
-          <div class="sett-head">Preferences</div>
-          <div class="sett-item">
-            <div class="sett-icon ic-gold">🔔</div>
-            <div class="sett-body"><div class="sett-lbl">Push Notifications</div><div class="sett-sub">Alert on new messages</div></div>
-            <div class="toggle on" id="tog-notif" onclick="togPref('notif')"></div>
-          </div>
-          <div class="sett-item">
-            <div class="sett-icon ic-gold">🔊</div>
-            <div class="sett-body"><div class="sett-lbl">Sound</div><div class="sett-sub">Message sounds</div></div>
-            <div class="toggle on" id="tog-sound" onclick="togPref('sound')"></div>
-          </div>
-          <div class="sett-item">
-            <div class="sett-icon ic-blue">✓✓</div>
-            <div class="sett-body"><div class="sett-lbl">Read Receipts</div><div class="sett-sub">Let peers see when you've read</div></div>
-            <div class="toggle on" id="tog-read" onclick="togPref('read')"></div>
-          </div>
+        <!-- Chat Window -->
+        <div id="chatWindow" class="hidden sm:flex glass flex-1 rounded-3xl flex-col overflow-hidden relative">
+            
+            <!-- Dynamic Placeholder -->
+            <div id="placeholder" class="absolute inset-0 z-10 bg-slate-900/40 backdrop-blur-sm flex flex-col items-center justify-center">
+                <div class="w-16 h-16 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center mb-4">
+                    <i class="fas fa-lock text-white/20"></i>
+                </div>
+                <p class="text-white/40 text-sm">Select a node to begin end-to-end session.</p>
+            </div>
+
+            <!-- Chat Header -->
+            <div class="p-4 sm:p-6 flex items-center justify-between border-b border-white/5">
+                <div class="flex items-center gap-4">
+                    <button onclick="backToSidebar()" class="sm:hidden text-slate-400 p-2"><i class="fas fa-arrow-left"></i></button>
+                    <div id="activeAvatar" class="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center font-bold text-indigo-400 border border-white/10">?</div>
+                    <div>
+                        <h3 id="activeTitle" class="font-bold text-slate-100">Contact Node</h3>
+                        <p id="activeStatus" class="text-[10px] text-green-500 uppercase tracking-widest font-bold">Active Session</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="startCall(false)" class="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-all"><i class="fas fa-phone-alt"></i></button>
+                    <button onclick="startCall(true)" class="w-10 h-10 rounded-xl hover:bg-white/5 flex items-center justify-center transition-all"><i class="fas fa-video"></i></button>
+                </div>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col">
+                <!-- Messages JS Inject -->
+            </div>
+
+            <!-- Typing/Voice Indicator -->
+            <div id="indicator" class="px-6 py-2 text-[10px] text-indigo-400 font-bold hidden italic">Node is typing...</div>
+
+            <!-- Footer / Input -->
+            <div class="p-4 sm:p-6 bg-white/[0.02]">
+                <div class="flex items-center gap-3">
+                    <button onclick="document.getElementById('fileInput').click()" class="w-11 h-11 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <input type="file" id="fileInput" class="hidden" onchange="handleFileUpload(this)">
+                    
+                    <div class="flex-1 relative">
+                        <input type="text" id="userInput" oninput="sendTyping()" placeholder="Encrypt message..." class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 focus:outline-none focus:border-indigo-500 transition-all text-sm">
+                        <button onclick="toggleVoiceRecord()" id="micBtn" class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl text-slate-400 hover:text-white transition-all">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                    </div>
+
+                    <button onclick="emitText()" class="w-12 h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-600/30 transition-all">
+                        <i class="fas fa-paper-plane text-sm"></i>
+                    </button>
+                </div>
+            </div>
         </div>
+    </div>
 
-        <!-- SECURITY -->
-        <div class="sett-section">
-          <div class="sett-head">Security</div>
-          <div class="sett-item tap" onclick="showChangePw()">
-            <div class="sett-icon ic-teal">🔑</div>
-            <div class="sett-body"><div class="sett-lbl">Change Password</div><div class="sett-sub">Update your login password</div></div>
-            <div class="sett-right sett-chev"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
-          </div>
-          <div class="sett-item tap" onclick="showChangePw()">
-            <div class="sett-icon ic-blue">🛡️</div>
-            <div class="sett-body"><div class="sett-lbl">Your Z-ID is Unique</div><div class="sett-sub">Registered to this device only</div></div>
-            <div class="sett-right"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--green)">VERIFIED</span></div>
-          </div>
+    <!-- Call Overlay -->
+    <div id="callOverlay" class="hidden fixed inset-0 z-[100] bg-slate-950 flex flex-col">
+        <video id="remoteVideo" class="flex-1 w-full scale-x-[-1] object-cover" autoplay></video>
+        <div class="absolute top-6 right-6 w-32 sm:w-48 aspect-video rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
+            <video id="localVideo" class="w-full h-full object-cover scale-x-[-1]" autoplay muted></video>
         </div>
-
-        <!-- DANGER -->
-        <div class="sett-section">
-          <div class="sett-head">Account</div>
-          <div class="sett-item tap" onclick="doLogout()">
-            <div class="sett-icon ic-red">🚪</div>
-            <div class="sett-body"><div class="sett-lbl" style="color:var(--red)">Sign Out</div><div class="sett-sub">Disconnect from mesh network</div></div>
-          </div>
+        <div class="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4 glass px-8 py-5 rounded-full">
+            <button onclick="toggleCallDev('audio')" id="micCallBtn" class="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center"><i class="fas fa-microphone"></i></button>
+            <button onclick="hangup()" class="w-14 h-14 rounded-full bg-red-500 text-white flex items-center justify-center text-xl shadow-lg shadow-red-500/40"><i class="fas fa-phone-slash"></i></button>
+            <button onclick="toggleCallDev('video')" id="camCallBtn" class="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center"><i class="fas fa-video"></i></button>
         </div>
-
-        <div style="height:16px"></div>
-      </div>
     </div>
 
-  </div><!-- /.sidebar-panel -->
-
-  <div class="main-panel">
-    <div class="no-chat-ph" id="no-chat-ph">
-      <div class="no-chat-glyph">◈</div>
-      <div class="no-chat-lbl">Select a conversation</div>
-      <div class="no-chat-hint">Click a contact to open chat<br>or add a new connection by Z-ID</div>
-    </div>
-
-<!-- ════════════════════════════════════
-  CHAT VIEW
-════════════════════════════════════ -->
-<div id="chat-view">
-  <div class="chat-header" id="ch-header">
-    <button class="ch-back" onclick="closeChat()">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-    </button>
-    <div class="ch-av" id="ch-av" onclick="showContactDetail()"></div>
-    <div class="ch-info" onclick="showContactDetail()" style="cursor:pointer">
-      <div class="ch-name" id="ch-name">—</div>
-      <div class="ch-sub" id="ch-sub">—</div>
-    </div>
-    <div class="ch-actions">
-      <button class="ch-btn" onclick="startCall('voice')" title="Voice call">
-        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.36 12a19.79 19.79 0 01-3.15-8.57A2 2 0 013.22 1.5h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L7.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0121 16.92z"/></svg>
-      </button>
-      <button class="ch-btn call-v" onclick="startCall('video')" title="Video call">
-        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-      </button>
-      <button class="ch-btn" id="menu-btn" onclick="toggleDd()" title="More">
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
-      </button>
-    </div>
-
-    <!-- DROPDOWN -->
-    <div class="dd hide" id="chat-dd">
-      <div class="dd-item" onclick="ddAct('contact')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Contact Info</div>
-      <div class="dd-item" id="dd-mute" onclick="ddAct('mute')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>Mute Notifications</div>
-      <div class="dd-item" onclick="ddAct('media')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Shared Files</div>
-      <div class="dd-item" onclick="ddAct('export')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export Chat</div>
-      <div class="dd-sep"></div>
-      <div class="dd-item red" onclick="ddAct('clear')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>Clear History</div>
-      <div class="dd-item red" onclick="ddAct('block')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>Block Contact</div>
-    </div>
-  </div>
-
-  <div class="msg-area" id="msg-area"></div>
-
-  <div class="input-bar">
-    <label class="ib-btn" title="Attach file">
-      <input type="file" id="fi" style="display:none" onchange="onFile(event)">
-      <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-    </label>
-    <div class="ib-btn" id="vn-btn" onclick="toggleVN()">
-      <svg id="mic-ic" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-      <svg id="stop-ic" width="17" height="17" fill="currentColor" viewBox="0 0 24 24" class="hide"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
-    </div>
-    <textarea id="msg-ta" class="ib-txt" placeholder="Message…" rows="1" onkeydown="onKey(event)" oninput="grow(this)"></textarea>
-    <button class="send-btn" onclick="sendMsg()">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-    </button>
-  </div>
-</div>
-
-<!-- CALL OVERLAY -->
-<div id="call-ov">
-  <div class="co-top">
-    <div class="co-av" id="co-av">?</div>
-    <div class="co-name" id="co-nm">—</div>
-    <div class="co-zid" id="co-zid">—</div>
-    <div class="co-status" id="co-st">Calling…</div>
-    <div class="co-timer hide" id="co-tmr">00:00</div>
-  </div>
-  <div class="vid-area" id="vid-area"><video id="rem-vid" autoplay playsinline></video><video id="loc-vid" autoplay playsinline muted></video><span class="vid-ph" id="vid-ph">Waiting for video…</span></div>
-  <div class="co-btns">
-    <div class="co-btn-wrap">
-      <div class="co-btn act" id="co-mut" onclick="toggleMute()">
-        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/></svg>
-      </div>
-      <div class="co-lbl">MUTE</div>
-    </div>
-    <div class="co-btn-wrap">
-      <div class="co-btn end" onclick="endCall()">
-        <svg width="24" height="24" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92v3a2 2 0 01-2.18 2A19.79 19.79 0 0112 19c-1-.5-2-1.1-2.9-1.8M5 5l14 14"/></svg>
-      </div>
-      <div class="co-lbl">END</div>
-    </div>
-    <div class="co-btn-wrap" id="vid-tog-wrap">
-      <div class="co-btn act" id="co-vid" onclick="toggleCam()">
-        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-      </div>
-      <div class="co-lbl">CAMERA</div>
-    </div>
-  </div>
-</div>
-
-<!-- MODALS -->
-<div id="mod-root"></div>
-<div id="toast"></div>
-<div id="drop-ov"><div style="font-size:44px;opacity:.6">📎</div>Drop to send</div>
-
-  </div><!-- /.main-panel -->
-  </div><!-- /.app-shell -->
-</div><!-- /#app -->
-
-<script>
-// ════════════════════════════════════════
-//  STORAGE
-// ════════════════════════════════════════
-const S = {
-  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
-  del: k => localStorage.removeItem(k)
-};
-
-// ════════════════════════════════════════
-//  STATE
-// ════════════════════════════════════════
-let me = null;          // { zid, passHash, fullname, nick, status, avatarB64, nodeId, prefs }
-let peer = null;
-let myNodeId = '';
-let contacts = {};      // zid → { nodeId, name, nick, zid, avatarB64, msgs[], unread, muted, blocked, conn }
-let activeZid = null;
-let fileChunks = {};
-let vnRec = { active: false, mr: null, chunks: [], start: 0 };
-let callS = { active: false, type: null, muted: false, vidOn: false, timer: null, secs: 0, mc: null };
-let lStream = null;
-let prefs = { notif: true, sound: true, read: true };
-const CHUNK = 65536;
-
-// ════════════════════════════════════════
-//  BOOT
-// ════════════════════════════════════════
-(function boot() {
-  const saved = S.get('nx_profile');
-  if (saved) { goScreen('lg'); }
-  else { goScreen('ob'); }
-})();
-
-function goScreen(id) {
-  ['ob','lg','app'].forEach(s => document.getElementById(s).classList.toggle('hide', s !== id));
-}
-
-// ════════════════════════════════════════
-//  ONBOARDING
-// ════════════════════════════════════════
-let OB = { fn:'', nk:'', zid:'', av:'' };
-
-function obGo(step) {
-  if (step === 1) {
-    OB.fn = document.getElementById('ob-fn').value.trim();
-    OB.nk = document.getElementById('ob-nk').value.trim();
-    if (!OB.fn) { toast('Please enter your full name'); return; }
-    if (!OB.nk) { toast('Please enter a callsign'); return; }
-  }
-  if (step === 2) {
-    const z = document.getElementById('ob-zid').value.trim().toUpperCase();
-    if (!/^[A-Z]{3}[0-9]$/.test(z)) { toast('Z-ID format: 3 letters + 1 digit  (e.g. NEX7)'); return; }
-    OB.zid = z;
-  }
-  ['s0','s1','s2'].forEach((id, i) => document.getElementById(id).classList.toggle('hide', i !== step));
-  ['p0','p1','p2'].forEach((id, i) => {
-    const el = document.getElementById(id);
-    el.className = 'step-pip ' + (i < step ? 'done' : i === step ? 'active' : 'idle');
-  });
-}
-
-function obAvChange(e) {
-  const f = e.target.files[0]; if (!f) return;
-  resizeImg(f, b64 => {
-    OB.av = b64;
-    const img = document.getElementById('ob-av-img');
-    img.src = b64; img.style.display = 'block';
-    document.getElementById('ob-av-lbl').style.display = 'none';
-  });
-}
-
-function obFinish() {
-  const p = document.getElementById('ob-pw').value;
-  const p2 = document.getElementById('ob-pw2').value;
-  if (p.length < 6) { toast('Password must be at least 6 characters'); return; }
-  if (p !== p2) { toast('Passwords do not match'); return; }
-  const profile = {
-    zid: OB.zid, passHash: hash(p),
-    fullname: OB.fn, nick: OB.nk,
-    status: 'Available', avatarB64: OB.av,
-    nodeId: null, prefs: { notif:true, sound:true, read:true }
-  };
-  S.set('nx_profile', profile);
-  me = profile;
-  launchApp();
-}
-
-function onZidInput(el, target) {
-  const v = el.value.replace(/[^a-zA-Z0-9]/g,'').toUpperCase().slice(0,4);
-  el.value = v;
-  const d = document.getElementById(target);
-  if (d) d.textContent = v || '—';
-}
-
-// ════════════════════════════════════════
-//  LOGIN
-// ════════════════════════════════════════
-function doLogin() {
-  const z = document.getElementById('lg-zid').value.trim().toUpperCase();
-  const p = document.getElementById('lg-pw').value;
-  const saved = S.get('nx_profile');
-  if (!saved) { toast('No account found — please register'); return; }
-  if (saved.zid !== z) { toast('Incorrect Z-ID'); return; }
-  if (saved.passHash !== hash(p)) { toast('Incorrect password'); return; }
-  me = saved;
-  launchApp();
-}
-
-function doLogout() {
-  if (peer) { try { peer.destroy(); } catch{} peer = null; }
-  me = null; contacts = {}; activeZid = null;
-  goScreen('lg');
-  document.getElementById('lg-zid').value = '';
-  document.getElementById('lg-pw').value = '';
-}
-
-// ════════════════════════════════════════
-//  LAUNCH APP
-// ════════════════════════════════════════
-function launchApp() {
-  prefs = me.prefs || { notif:true, sound:true, read:true };
-  goScreen('app');
-  renderProfile();
-  loadContacts();
-  setNet('pend');
-
-  peer = new Peer(me.nodeId || undefined, { debug: 0 });
-  peer.on('open', id => {
-    myNodeId = id;
-    me.nodeId = id; S.set('nx_profile', me);
-    document.getElementById('zid-disp').textContent = me.zid;
-    document.getElementById('ir-nid').textContent = id;
-    setNet('on');
-    toast('◈ Connected');
-    autoReconnect();
-  });
-  peer.on('connection', conn => setupConn(conn));
-  peer.on('call', handleCall);
-  peer.on('error', e => { setNet('off'); toast('Error: ' + e.type); });
-  peer.on('disconnected', () => { setNet('pend'); setTimeout(() => peer.reconnect(), 2000); });
-}
-
-// Auto-reconnect to known online contacts
-function autoReconnect() {
-  Object.values(contacts).forEach(c => {
-    if (c.nodeId && !c.conn?.open && !c.blocked) {
-      setTimeout(() => tryConnect(c.zid), 800);
-    }
-  });
-}
-
-// ════════════════════════════════════════
-//  CONTACTS (stored by Z-ID)
-// ════════════════════════════════════════
-function loadContacts() {
-  const saved = S.get('nx_contacts_' + me.zid) || {};
-  contacts = {};
-  Object.entries(saved).forEach(([zid, c]) => {
-    contacts[zid] = { ...c, msgs: c.msgs || [], conn: null, unread: 0 };
-  });
-  renderCList();
-}
-
-function saveContacts() {
-  const toSave = {};
-  Object.entries(contacts).forEach(([zid, c]) => {
-    toSave[zid] = { zid: c.zid, nodeId: c.nodeId, name: c.name, nick: c.nick, avatarB64: c.avatarB64, msgs: c.msgs.slice(-200), muted: c.muted, blocked: c.blocked };
-  });
-  S.set('nx_contacts_' + me.zid, toSave);
-}
-
-function showAddContact() {
-  const root = document.getElementById('mod-root');
-  root.innerHTML = `
-  <div class="modal-bg" onclick="closeMod(event,this)">
-    <div class="modal">
-      <div class="modal-title">Add Contact</div>
-      <div class="modal-sub">Enter the Z-ID of the person you want to connect with. Only one of you needs to add the other — they'll appear in your contacts automatically when online.</div>
-      <input class="zid-big-inp" id="add-zid-inp" type="text" placeholder="ABC1" maxlength="4" oninput="onZidInput(this,'add-zid-prev')" autocomplete="off">
-      <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--c);letter-spacing:.2em;margin:10px 0;font-weight:600" id="add-zid-prev">—</div>
-      <div class="modal-row">
-        <button class="btn ghost sm" style="width:auto;flex:1" onclick="closeMod()">Cancel</button>
-        <button class="btn sm" style="flex:2" onclick="addContact()">Add Contact →</button>
-      </div>
-    </div>
-  </div>`;
-  setTimeout(() => document.getElementById('add-zid-inp')?.focus(), 100);
-}
-
-function addContact() {
-  const z = document.getElementById('add-zid-inp')?.value.trim().toUpperCase();
-  if (!z) { toast('Enter a Z-ID'); return; }
-  if (!/^[A-Z]{3}[0-9]$/.test(z)) { toast('Z-ID format: 3 letters + 1 digit'); return; }
-  if (z === me.zid) { toast('That\'s your own Z-ID'); return; }
-  if (contacts[z]) { closeMod(); openChat(z); return; }
-
-  contacts[z] = { zid: z, nodeId: null, name: z, nick: z, avatarB64: '', msgs: [], unread: 0, muted: false, blocked: false, conn: null };
-  saveContacts();
-  renderCList();
-  closeMod();
-  toast('Contact added ✓ — they\'ll connect automatically when online');
-  tryConnect(z);
-}
-
-// ════════════════════════════════════════
-//  P2P VIA Z-ID LOOKUP
-// ════════════════════════════════════════
-// Z-ID lookup: we store a "zid→nodeId" mapping in localStorage (simulated global registry)
-// In a real app this would be a lightweight signaling lookup; here we use a shared key
-function zidRegistry() { return S.get('nx_registry') || {}; }
-function registerZid(zid, nodeId) { const r = zidRegistry(); r[zid] = nodeId; S.set('nx_registry', r); }
-function lookupZid(zid) { return zidRegistry()[zid] || null; }
-
-function tryConnect(zid) {
-  if (!peer || !myNodeId) return;
-  const c = contacts[zid];
-  if (!c || c.conn?.open || c.blocked) return;
-
-  // Register our own ZID
-  registerZid(me.zid, myNodeId);
-
-  // Look up their nodeId
-  const nodeId = c.nodeId || lookupZid(zid);
-  if (!nodeId) { return; } // Not yet discoverable
-
-  c.nodeId = nodeId;
-  const conn = peer.connect(nodeId, {
-    reliable: true,
-    metadata: { zid: me.zid, name: me.nick || me.fullname, fullname: me.fullname, avatarB64: me.avatarB64 }
-  });
-  setupConn(conn, zid);
-}
-
-function setupConn(conn, knownZid) {
-  conn.on('open', () => {
-    const md = conn.metadata || {};
-    const zid = knownZid || md.zid;
-    if (!zid) { conn.close(); return; }
-
-    registerZid(me.zid, myNodeId);
-
-    // Auto-accept incoming contacts — one party adding is enough
-    const isNew = !contacts[zid];
-    if (!contacts[zid]) {
-      contacts[zid] = { zid, nodeId: conn.peer, name: md.name || zid, nick: md.name || zid, fullname: md.fullname || '', avatarB64: md.avatarB64 || '', msgs: [], unread: 0, muted: false, blocked: false, conn: null };
-    }
-    const c = contacts[zid];
-    c.conn = conn;
-    c.nodeId = conn.peer;
-    if (md.name) c.name = md.name;
-    if (md.fullname) c.fullname = md.fullname;
-    if (md.avatarB64) c.avatarB64 = md.avatarB64;
-
-    saveContacts();
-    renderCList();
-    if (activeZid === zid) updateChatHdr();
-    if (isNew) {
-      toast('◈ ' + c.name + ' added you as a contact');
-    } else {
-      toast('◈ ' + c.name + ' connected');
-    }
-
-    conn.send({ type:'hs', zid: me.zid, name: me.nick || me.fullname, fullname: me.fullname, avatarB64: me.avatarB64 });
-  });
-
-  conn.on('data', d => {
-    const zid = knownZid || d.zid || conn.peer;
-    onData(zid, d, conn);
-  });
-
-  conn.on('close', () => {
-    const zid = knownZid;
-    if (zid && contacts[zid]) { contacts[zid].conn = null; }
-    renderCList();
-    if (activeZid === zid) updateChatHdr();
-  });
-
-  conn.on('error', e => toast('Link error: ' + e.type));
-}
-
-// ════════════════════════════════════════
-//  DATA
-// ════════════════════════════════════════
-function onData(zid, d, conn) {
-  const isNew = !contacts[zid];
-  if (!contacts[zid]) contacts[zid] = { zid, nodeId: conn?.peer, name: zid, nick: zid, fullname: '', avatarB64: '', msgs: [], unread: 0, muted: false, blocked: false, conn };
-  const c = contacts[zid];
-  if (c.blocked) return;
-  if (c.conn !== conn && conn) c.conn = conn;
-  if (isNew) { saveContacts(); renderCList(); toast('◈ ' + c.name + ' connected with you'); }
-
-  if (d.type === 'hs') {
-    if (d.name) c.name = d.name;
-    if (d.fullname) c.fullname = d.fullname;
-    if (d.avatarB64) c.avatarB64 = d.avatarB64;
-    if (conn?.peer) { c.nodeId = conn.peer; registerZid(zid, conn.peer); }
-    saveContacts(); renderCList();
-    if (activeZid === zid) updateChatHdr();
-    return;
-  }
-
-  if (d.type === 'msg') {
-    const m = { from:'in', text: d.text, t: Date.now() };
-    c.msgs.push(m);
-    if (activeZid === zid) { appendMsg(m); }
-    else { c.unread = (c.unread||0) + 1; renderCList(); if (!c.muted && prefs.notif) toast(c.name + ': ' + d.text.slice(0,35)); }
-    if (activeZid === zid) { if (prefs.read && c.conn?.open) c.conn.send({type:'read'}); }
-    saveContacts();
-    return;
-  }
-
-  if (d.type === 'read') {
-    // Mark last out msg as read
-    const last = [...c.msgs].reverse().find(m => m.from === 'out');
-    if (last) { last.read = true; if (activeZid === zid) refreshReadState(); }
-    return;
-  }
-
-  if (d.type === 'fstart') { fileChunks[d.fid] = { name:d.name, size:d.size, mime:d.mime, chunks:[], got:0 }; const m={from:'in',type:'file',fid:d.fid,fname:d.name,fsize:d.size,pct:0,url:null,t:Date.now()}; c.msgs.push(m); if(activeZid===zid) appendMsg(m); saveContacts(); return; }
-  if (d.type === 'fchunk') { const fc=fileChunks[d.fid]; if(!fc) return; fc.chunks.push(d.chunk); fc.got+=d.chunk.byteLength; const pct=Math.round(fc.got/fc.size*100); const mo=c.msgs.find(x=>x.fid===d.fid); if(mo) mo.pct=pct; if(activeZid===zid) updPct(d.fid,pct); return; }
-  if (d.type === 'fend') { const fc=fileChunks[d.fid]; if(!fc) return; const url=URL.createObjectURL(new Blob(fc.chunks,{type:fc.mime})); const mo=c.msgs.find(x=>x.fid===d.fid); if(mo){mo.url=url;mo.pct=100;} if(activeZid===zid) finFile(d.fid,url,fc.name); delete fileChunks[d.fid]; saveContacts(); return; }
-
-  if (d.type === 'vn') {
-    const bytes = b64ToAb(d.data);
-    const url = URL.createObjectURL(new Blob([bytes],{type:'audio/webm'}));
-    const m = { from:'in', type:'vn', url, dur:d.dur, t:Date.now() };
-    c.msgs.push(m);
-    if (activeZid===zid) appendMsg(m); else { c.unread=(c.unread||0)+1; renderCList(); if(!c.muted) toast(c.name+': 🎤 Voice note'); }
-    saveContacts(); return;
-  }
-}
-
-// ════════════════════════════════════════
-//  CHAT OPEN/CLOSE
-// ════════════════════════════════════════
-function openChat(zid) {
-  activeZid = zid;
-  const c = contacts[zid];
-  c.unread = 0;
-  renderCList();
-  updateChatHdr();
-
-  const ma = document.getElementById('msg-area');
-  ma.innerHTML = '';
-
-  if (c.msgs.length === 0) {
-    ma.innerHTML = `<div class="sys-msg">Start of conversation with ${c.name}</div>`;
-  } else {
-    let lastDate = null;
-    c.msgs.forEach(m => {
-      const d = dateLbl(m.t);
-      if (d !== lastDate) { const dd = document.createElement('div'); dd.className = 'date-div'; dd.innerHTML = `<span>${d}</span>`; ma.appendChild(dd); lastDate = d; }
-      appendMsg(m, false);
-    });
-  }
-  ma.scrollTop = ma.scrollHeight;
-
-  document.getElementById('chat-view').classList.add('open');
-  document.getElementById('chat-dd').classList.add('hide');
-
-  // Desktop: hide placeholder
-  const ph = document.getElementById('no-chat-ph');
-  if (ph) ph.classList.add('hide');
-
-  // Try connect if not connected
-  if (!c.conn?.open) tryConnect(zid);
-
-  setTimeout(() => document.getElementById('msg-ta').focus(), 350);
-}
-
-function closeChat() {
-  document.getElementById('chat-view').classList.remove('open');
-  document.getElementById('chat-dd').classList.add('hide');
-  activeZid = null;
-  // Show placeholder on desktop
-  const ph = document.getElementById('no-chat-ph');
-  if (ph) ph.classList.remove('hide');
-  renderCList();
-}
-
-function updateChatHdr() {
-  if (!activeZid) return;
-  const c = contacts[activeZid];
-  const online = c?.conn?.open;
-  const av = document.getElementById('ch-av');
-  av.className = 'ch-av' + (online ? ' online' : '');
-  if (c?.avatarB64) av.innerHTML = `<img src="${c.avatarB64}">`;
-  else av.textContent = (c?.name||'?')[0].toUpperCase();
-  document.getElementById('ch-name').textContent = c?.name || activeZid;
-  const sub = document.getElementById('ch-sub');
-  sub.textContent = online ? `Online · ${c.zid}` : `Offline · ${c.zid}`;
-  sub.className = 'ch-sub ' + (online ? 'on' : 'off');
-
-  // update mute label in dd
-  const ddm = document.getElementById('dd-mute');
-  if (ddm && c) ddm.childNodes[1].textContent = c.muted ? 'Unmute Notifications' : 'Mute Notifications';
-}
-
-// ════════════════════════════════════════
-//  DROPDOWN
-// ════════════════════════════════════════
-function toggleDd() {
-  document.getElementById('chat-dd').classList.toggle('hide');
-}
-
-document.addEventListener('click', e => {
-  const dd = document.getElementById('chat-dd');
-  const mb = document.getElementById('menu-btn');
-  if (dd && !dd.classList.contains('hide') && !dd.contains(e.target) && e.target !== mb && !mb.contains(e.target)) {
-    dd.classList.add('hide');
-  }
-});
-
-function ddAct(a) {
-  document.getElementById('chat-dd').classList.add('hide');
-  const c = contacts[activeZid]; if (!c) return;
-
-  if (a === 'contact') { showContactDetail(); return; }
-  if (a === 'mute') {
-    c.muted = !c.muted; saveContacts();
-    toast(c.muted ? '🔕 Muted' : '🔔 Unmuted');
-    renderCList(); updateChatHdr(); return;
-  }
-  if (a === 'clear') {
-    showConfirm('Clear chat history', 'All messages will be permanently deleted. This cannot be undone.', () => {
-      c.msgs = []; saveContacts();
-      document.getElementById('msg-area').innerHTML = `<div class="sys-msg">History cleared</div>`;
-      toast('Chat cleared');
-    }); return;
-  }
-  if (a === 'block') {
-    showConfirm('Block ' + c.name, 'You won\'t receive any more messages from this contact.', () => {
-      c.blocked = true; if (c.conn) c.conn.close(); c.conn = null;
-      saveContacts(); closeChat(); renderCList(); toast('Contact blocked');
-    }); return;
-  }
-  if (a === 'export') {
-    let txt = `NEXUS Export · ${c.name} (${c.zid})\n${'─'.repeat(44)}\n`;
-    c.msgs.forEach(m => { txt += `[${fmtT(m.t)}] ${m.from==='out'?'Me':c.name}: ${m.type==='file'?'📎 '+m.fname : m.type==='vn'?'🎤 Voice note' : m.type==='calllog'?'📞 Call' : m.text}\n`; });
-    const blob = new Blob([txt],{type:'text/plain'}); const a2 = document.createElement('a'); a2.href=URL.createObjectURL(blob); a2.download='nexus_'+c.zid+'.txt'; a2.click();
-    toast('Exported'); return;
-  }
-  if (a === 'media') { showMediaModal(c); }
-}
-
-function showContactDetail() {
-  if (!activeZid) return;
-  const c = contacts[activeZid];
-  const root = document.getElementById('mod-root');
-  const av = c.avatarB64 ? `<img src="${c.avatarB64}">` : c.name[0].toUpperCase();
-  root.innerHTML = `
-  <div class="modal-bg" onclick="closeMod(event,this)">
-    <div class="modal contact-detail">
-      <div class="cd-av">${av}</div>
-      <div class="cd-name">${esc(c.name)}</div>
-      <div class="cd-nick">${c.nick||c.name}</div>
-      <div class="cd-zid" onclick="copyText('${c.zid}')">◈ ${c.zid} <span style="font-size:10px">📋</span></div>
-      <div style="margin:16px 0;width:100%;border-top:1px solid var(--rim2)"></div>
-      <div class="cd-info-row"><div class="cd-key">STATUS</div><div class="cd-val">${c.conn?.open ? '● Online' : '○ Offline'}</div></div>
-      <div class="cd-info-row"><div class="cd-key">Z-ID</div><div class="cd-val mono" style="color:var(--c);font-weight:600">${c.zid}</div></div>
-      ${c.fullname?`<div class="cd-info-row"><div class="cd-key">FULL NAME</div><div class="cd-val">${esc(c.fullname)}</div></div>`:''}
-      <div class="cd-info-row"><div class="cd-key">MESSAGES</div><div class="cd-val">${c.msgs.length}</div></div>
-      <div class="cd-info-row"><div class="cd-key">NOTIFICATIONS</div><div class="cd-val">${c.muted?'Muted':'On'}</div></div>
-      <div style="margin-top:16px;display:flex;gap:10px">
-        <button class="btn ghost sm" style="flex:1" onclick="closeMod()">Close</button>
-        <button class="btn danger sm" style="flex:1" onclick="ddAct('block');closeMod()">Block</button>
-      </div>
-    </div>
-  </div>`;
-}
-
-function showMediaModal(c) {
-  const files = c.msgs.filter(m => m.type === 'file');
-  const root = document.getElementById('mod-root');
-  const items = files.length === 0
-    ? `<div class="empty-page" style="padding:24px"><div class="empty-glyph">📎</div><div class="empty-body">No shared files yet</div></div>`
-    : files.map(f => `<div class="sett-item"><div class="sett-icon ic-teal">${fIcon(f.fname)}</div><div class="sett-body"><div class="sett-lbl" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.fname)}</div><div class="sett-sub">${fmtSz(f.fsize)} · ${fmtT(f.t)}</div></div>${f.url?`<a href="${f.url}" download="${esc(f.fname)}" class="btn sm ghost" style="font-size:9px;padding:6px 10px">▼</a>`:''}</div>`).join('');
-  root.innerHTML = `
-  <div class="modal-bg" onclick="closeMod(event,this)">
-    <div class="modal"><div class="modal-title">Shared Files</div><div style="max-height:55vh;overflow-y:auto;margin:0 -20px">${items}</div><button class="btn ghost" style="margin-top:16px" onclick="closeMod()">Close</button></div>
-  </div>`;
-}
-
-// ════════════════════════════════════════
-//  SEND
-// ════════════════════════════════════════
-function sendMsg() {
-  if (!activeZid) return;
-  const c = contacts[activeZid];
-  if (!c?.conn?.open) { toast('Peer not connected'); return; }
-  const ta = document.getElementById('msg-ta');
-  const text = ta.value.trim(); if (!text) return;
-  c.conn.send({ type:'msg', text });
-  const m = { from:'out', text, t: Date.now(), read: false };
-  c.msgs.push(m);
-  appendMsg(m);
-  ta.value = ''; ta.style.height = '';
-  saveContacts();
-}
-
-function onKey(e) { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); sendMsg(); } }
-function grow(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
-
-// ════════════════════════════════════════
-//  FILES
-// ════════════════════════════════════════
-function onFile(e) { if (e.target.files[0]) sendFile(e.target.files[0]); e.target.value=''; }
-
-function sendFile(file) {
-  if (!activeZid) { toast('Open a chat first'); return; }
-  const c = contacts[activeZid];
-  if (!c?.conn?.open) { toast('Peer not connected'); return; }
-  const fid = Date.now()+'_'+Math.random().toString(36).slice(2,7);
-  c.conn.send({type:'fstart',fid,name:file.name,size:file.size,mime:file.type||'application/octet-stream'});
-  const m={from:'out',type:'file',fid,fname:file.name,fsize:file.size,pct:0,url:null,t:Date.now()};
-  c.msgs.push(m); appendMsg(m);
-  let off=0;
-  const reader=new FileReader();
-  function next(){reader.readAsArrayBuffer(file.slice(off,off+CHUNK));}
-  reader.onload=ev=>{
-    c.conn.send({type:'fchunk',fid,chunk:ev.target.result});
-    off+=ev.target.result.byteLength;
-    const pct=Math.round(off/file.size*100); updPct(fid,pct);
-    const mo=c.msgs.find(x=>x.fid===fid); if(mo) mo.pct=pct;
-    if(off<file.size){setTimeout(next,0);}
-    else{c.conn.send({type:'fend',fid}); const url=URL.createObjectURL(file); finFile(fid,url,file.name); if(mo){mo.url=url;mo.pct=100;} toast('Sent: '+file.name.slice(0,22));}
-  };
-  next();
-}
-
-// ════════════════════════════════════════
-//  VOICE NOTES
-// ════════════════════════════════════════
-async function toggleVN() {
-  if (!activeZid) { toast('Open a chat first'); return; }
-  const c = contacts[activeZid];
-  if (!c?.conn?.open) { toast('Peer not connected'); return; }
-
-  if (!vnRec.active) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-      vnRec.mr = new MediaRecorder(stream);
-      vnRec.chunks = []; vnRec.start = Date.now();
-      vnRec.mr.ondataavailable = e => vnRec.chunks.push(e.data);
-      vnRec.mr.onstop = async () => {
-        const dur = Math.round((Date.now()-vnRec.start)/1000);
-        const blob = new Blob(vnRec.chunks,{type:'audio/webm'});
-        const ab = await blob.arrayBuffer();
-        c.conn.send({type:'vn',data:abToB64(ab),dur});
-        const url = URL.createObjectURL(blob);
-        const m={from:'out',type:'vn',url,dur,t:Date.now()};
-        c.msgs.push(m); appendMsg(m); saveContacts();
-        stream.getTracks().forEach(t=>t.stop());
-      };
-      vnRec.mr.start();
-      vnRec.active = true;
-      document.getElementById('vn-btn').classList.add('recording');
-      document.getElementById('mic-ic').classList.add('hide');
-      document.getElementById('stop-ic').classList.remove('hide');
-      toast('Recording… tap to stop');
-    } catch { toast('Microphone access denied'); }
-  } else {
-    vnRec.mr.stop(); vnRec.active = false;
-    document.getElementById('vn-btn').classList.remove('recording');
-    document.getElementById('mic-ic').classList.remove('hide');
-    document.getElementById('stop-ic').classList.add('hide');
-  }
-}
-
-// ════════════════════════════════════════
-//  CALLS
-// ════════════════════════════════════════
-async function startCall(type) {
-  if (!activeZid) return;
-  const c = contacts[activeZid];
-  if (!c?.conn?.open) { toast('Peer not online'); return; }
-  try {
-    lStream = await navigator.mediaDevices.getUserMedia(type==='video'?{audio:true,video:{facingMode:'user'}}:{audio:true,video:false});
-  } catch { toast('Media access denied'); return; }
-  const mc = peer.call(c.nodeId, lStream, {metadata:{type,callerZid:me.zid,callerName:me.nick||me.fullname}});
-  openCallUI(activeZid, type, false);
-  mc.on('stream', s => { document.getElementById('rem-vid').srcObject=s; startTimer(); document.getElementById('co-st').textContent=type==='video'?'Video call active':'Voice call active'; });
-  mc.on('close', endCallClean);
-  callS.mc = mc;
-  if (type==='video'){ document.getElementById('loc-vid').srcObject=lStream; document.getElementById('vid-area').classList.add('show'); document.getElementById('vid-ph').style.display='none'; }
-  logCall(activeZid, type, 'out', 'calling');
-}
-
-function handleCall(mc) {
-  const md = mc.metadata||{}; const t = md.type||'voice';
-  const callerZid = md.callerZid||'???';
-  const callerName = md.callerName||callerZid;
-  showConfirm(`Incoming ${t} call`, `From: ${callerName} (${callerZid})`, async () => {
-    try {
-      lStream = await navigator.mediaDevices.getUserMedia(t==='video'?{audio:true,video:true}:{audio:true,video:false});
-      mc.answer(lStream);
-      openCallUI(callerZid, t, true);
-      mc.on('stream', s => { document.getElementById('rem-vid').srcObject=s; startTimer(); document.getElementById('co-st').textContent=t==='video'?'Video call active':'Voice call active'; });
-      mc.on('close', endCallClean);
-      callS.mc = mc;
-      if (t==='video'){ document.getElementById('loc-vid').srcObject=lStream; document.getElementById('vid-area').classList.add('show'); document.getElementById('vid-ph').style.display='none'; }
-      logCall(callerZid, t, 'in', 'answered');
-    } catch { toast('Media access denied'); mc.close(); }
-  }, () => { mc.close(); logCall(callerZid, t, 'in', 'missed'); toast('Call declined'); });
-}
-
-function openCallUI(zid, type, incoming) {
-  const c = contacts[zid];
-  callS.active=true; callS.type=type;
-  document.getElementById('call-ov').classList.add('open');
-  const av=document.getElementById('co-av');
-  if(c?.avatarB64) av.innerHTML=`<img src="${c.avatarB64}">`;
-  else av.textContent=(c?.name||zid)[0].toUpperCase();
-  document.getElementById('co-nm').textContent=c?.name||zid;
-  document.getElementById('co-zid').textContent=zid;
-  document.getElementById('co-st').textContent=incoming?`Incoming ${type} call…`:'Calling…';
-  document.getElementById('co-tmr').classList.add('hide');
-  document.getElementById('vid-tog-wrap').style.display=type==='video'?'flex':'none';
-  document.getElementById('vid-area').classList.remove('show');
-  document.getElementById('vid-ph').style.display='';
-}
-
-function startTimer() {
-  callS.secs=0; document.getElementById('co-tmr').classList.remove('hide');
-  callS.timer=setInterval(()=>{ callS.secs++; document.getElementById('co-tmr').textContent=pad(Math.floor(callS.secs/60))+':'+pad(callS.secs%60); },1000);
-}
-function pad(n){return String(n).padStart(2,'0');}
-
-function endCall() { if(callS.mc){try{callS.mc.close();}catch{}} endCallClean(); }
-function endCallClean() {
-  clearInterval(callS.timer);
-  if(lStream){lStream.getTracks().forEach(t=>t.stop());lStream=null;}
-  document.getElementById('call-ov').classList.remove('open');
-  document.getElementById('rem-vid').srcObject=null; document.getElementById('loc-vid').srcObject=null;
-  document.getElementById('vid-area').classList.remove('show'); document.getElementById('vid-ph').style.display='';
-  callS={active:false,type:null,muted:false,vidOn:false,timer:null,secs:0,mc:null};
-}
-
-function toggleMute() {
-  callS.muted=!callS.muted;
-  if(lStream) lStream.getAudioTracks().forEach(t=>t.enabled=!callS.muted);
-  document.getElementById('co-mut').classList.toggle('muted',callS.muted);
-}
-function toggleCam() {
-  callS.vidOn=!callS.vidOn;
-  if(lStream) lStream.getVideoTracks().forEach(t=>t.enabled=callS.vidOn);
-  document.getElementById('co-vid').classList.toggle('muted',!callS.vidOn);
-}
-
-function logCall(zid, type, dir, status) {
-  const c = contacts[zid]; if(!c) return;
-  c.msgs.push({type:'calllog',calltype:type,dir,status,t:Date.now()});
-  if(activeZid===zid) { const ma=document.getElementById('msg-area'); const el=document.createElement('div'); el.className='call-log'+(status==='missed'?' missed':''); el.innerHTML=`<span class="call-log-icon">${type==='video'?'📹':'📞'}</span>${dir==='out'?'↗ Outgoing':'↙ Incoming'} ${type} call <span class="call-dur">· ${status}</span>`; ma.appendChild(el); ma.scrollTop=ma.scrollHeight; }
-  saveContacts(); renderCList();
-}
-
-// ════════════════════════════════════════
-//  RENDER MESSAGES
-// ════════════════════════════════════════
-function appendMsg(m, scroll=true) {
-  const ma = document.getElementById('msg-area');
-
-  if (m.type === 'calllog') {
-    const el = document.createElement('div');
-    el.className='call-log'+(m.status==='missed'?' missed':'');
-    el.innerHTML=`<span class="call-log-icon">${m.calltype==='video'?'📹':'📞'}</span>${m.dir==='out'?'↗ Outgoing':'↙ Incoming'} ${m.calltype} call <span class="call-dur">· ${m.status}</span>`;
-    ma.appendChild(el); if(scroll) ma.scrollTop=ma.scrollHeight; return;
-  }
-
-  const row = document.createElement('div');
-  row.className = 'msg-row ' + m.from;
-  if (m.type === 'vn') {
-    const bars = Array.from({length:20},(_,i)=>`<div class="vn-bar" style="height:${7+Math.abs(Math.sin(i*0.9+(m.t%50)/50)*16)}px"></div>`).join('');
-    row.innerHTML = `<div class="vn-bub"><button class="vn-play" onclick="playVN(this,'${m.url}')"><svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button><div class="vn-wave">${bars}</div><div class="vn-dur">${m.dur||0}s</div></div>`;
-  } else if (m.type === 'file') {
-    const dl=m.url?`<a class="dl-btn" href="${m.url}" download="${esc(m.fname)}">▼ Download</a>`:`<div class="prog-b"><div class="prog-track"><div class="prog-fill" id="pf-${m.fid}" style="width:${m.pct||0}%"></div></div><div class="prog-lbl" id="pt-${m.fid}">${m.pct||0}%</div></div>`;
-    row.innerHTML=`<div class="file-bub"><div class="f-icon-box">${fIcon(m.fname)}</div><div class="f-dets"><div class="f-nm">${esc(m.fname)}</div><div class="f-sz">${fmtSz(m.fsize)}</div>${dl}</div></div>`;
-  } else {
-    row.innerHTML = `<div class="bubble">${esc(m.text).replace(/\n/g,'<br>')}</div>`;
-  }
-
-  const meta = document.createElement('div');
-  meta.className = 'msg-meta';
-  const tick = m.from==='out' ? `<span class="msg-tick ${m.read?'read':'sent'}" id="tick-${m.t}">✓✓</span>` : '';
-  meta.innerHTML = `<span class="msg-time">${fmtT(m.t)}</span>${tick}`;
-  row.appendChild(meta);
-  ma.appendChild(row);
-  if (scroll) ma.scrollTop = ma.scrollHeight;
-}
-
-function refreshReadState() {
-  if (!activeZid) return;
-  const c = contacts[activeZid];
-  c.msgs.forEach(m => { if (m.from==='out'&&m.read) { const el=document.getElementById('tick-'+m.t); if(el) el.className='msg-tick read'; } });
-}
-
-function playVN(btn, url) {
-  const a = new Audio(url); a.play();
-  const bub = btn.closest('.vn-bub'); if(bub) bub.classList.add('vn-playing');
-  btn.innerHTML='<svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
-  a.onended=()=>{ if(bub) bub.classList.remove('vn-playing'); btn.innerHTML='<svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>'; };
-}
-
-function updPct(fid,pct){ const f=document.getElementById('pf-'+fid),t=document.getElementById('pt-'+fid); if(f)f.style.width=pct+'%'; if(t)t.textContent=pct+'%'; }
-function finFile(fid,url,name){ const pw=document.getElementById('pt-'+fid)?.closest('.prog-b'); if(pw) pw.outerHTML=`<a class="dl-btn" href="${url}" download="${esc(name)}">▼ Download</a>`; }
-
-// ════════════════════════════════════════
-//  CONTACT LIST RENDER
-// ════════════════════════════════════════
-function renderCList(filter='') {
-  const wrap = document.getElementById('clist');
-  const empty = document.getElementById('empty-page');
-  const all = Object.values(contacts);
-  const vis = filter ? all.filter(c=>c.name.toLowerCase().includes(filter.toLowerCase())||c.zid.toLowerCase().includes(filter.toLowerCase())) : all;
-
-  if (vis.length===0) { empty.style.display='flex'; wrap.innerHTML=''; }
-  else { empty.style.display='none'; }
-
-  const total = all.reduce((a,c)=>a+(c.unread||0),0);
-  const nb = document.getElementById('nb');
-  nb.classList.toggle('hide',!total); nb.textContent=total;
-
-  document.getElementById('ir-peers').textContent = all.filter(c=>c.conn?.open).length;
-
-  wrap.innerHTML='';
-  vis.sort((a,b)=>{
-    const la=a.msgs[a.msgs.length-1]?.t||0, lb=b.msgs[b.msgs.length-1]?.t||0;
-    return lb-la;
-  }).forEach(c => {
-    const online = c.conn?.open;
-    const last = c.msgs[c.msgs.length-1];
-    const preview = last ? (last.type==='file'?'📎 '+last.fname : last.type==='vn'?'🎤 Voice note' : last.type==='calllog'?(last.dir==='out'?'↗':'↙')+' '+last.calltype+' call' : last.text) : 'Tap to start chatting';
-    const hasUnread = c.unread > 0;
-
-    const div = document.createElement('div');
-    div.className='c-item'+(c.zid===activeZid?' selected':'');
-    const avH = c.avatarB64 ? `<img src="${c.avatarB64}">` : `<span>${(c.name||'?')[0].toUpperCase()}</span>`;
-    div.innerHTML=`
-      <div class="av${online?' online':''}"><div class="av-inner">${avH}</div><div class="av-status"></div></div>
-      <div class="c-body">
-        <div class="c-head">
-          <div class="c-name">${esc(c.name)}<span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--t3);margin-left:6px;letter-spacing:.1em">${c.zid}</span></div>
-          <div class="c-time">${last?fmtT(last.t):''}</div>
+    <!-- Incoming Call -->
+    <div id="incomingCall" class="hidden fixed top-6 left-1/2 -translate-x-1/2 z-[110] w-[90%] max-w-sm glass rounded-2xl p-4 flex items-center gap-4 shadow-2xl animate-bounce">
+        <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center">
+            <i class="fas fa-video text-white"></i>
         </div>
-        <div class="c-foot">
-          <div class="c-preview${hasUnread?' unread':''}">${esc(preview)}</div>
-          ${hasUnread?`<div class="c-badge">${c.unread}</div>`:''}
-          ${c.muted?`<span class="c-muted-icon">🔕</span>`:''}
+        <div class="flex-1">
+            <p class="text-xs text-indigo-400 font-bold uppercase">Incoming Node Link</p>
+            <h4 id="callerName" class="font-bold">Unknown Node</h4>
         </div>
-      </div>`;
-    div.onclick = () => openChat(c.zid);
-    wrap.appendChild(div);
-  });
-}
-
-function filterContacts(v) { renderCList(v); }
-
-// ════════════════════════════════════════
-//  PROFILE
-// ════════════════════════════════════════
-function renderProfile() {
-  if (!me) return;
-  document.getElementById('p-bigname').textContent = me.fullname || '—';
-  document.getElementById('p-nick-d').textContent = me.nick || '—';
-  document.getElementById('p-status-d').textContent = me.status || '';
-  document.getElementById('p-zid-d').textContent = me.zid;
-  document.getElementById('ir-zid').textContent = me.zid;
-  document.getElementById('sub-fn').textContent = me.fullname;
-  document.getElementById('sub-nk').textContent = me.nick;
-  document.getElementById('sub-st').textContent = me.status||'';
-  document.getElementById('e-fn').value = me.fullname||'';
-  document.getElementById('e-nk').value = me.nick||'';
-  document.getElementById('e-st').value = me.status||'';
-  const av=document.getElementById('p-av');
-  if(me.avatarB64){ av.innerHTML=`<img src="${me.avatarB64}">`; }
-  else { av.innerHTML=`<span id="p-av-init">${(me.nick||me.fullname||'?')[0].toUpperCase()}</span>`; }
-  // prefs toggles
-  ['notif','sound','read'].forEach(k=>{
-    const el=document.getElementById('tog-'+k); if(el) el.classList.toggle('on',prefs[k]!==false);
-  });
-}
-
-function saveF(k) {
-  if(!me) return;
-  if(k==='fn'){const v=document.getElementById('e-fn').value.trim(); if(!v){toast('Name cannot be empty');return;} me.fullname=v;}
-  if(k==='nk'){const v=document.getElementById('e-nk').value.trim(); if(!v){toast('Callsign cannot be empty');return;} me.nick=v;}
-  if(k==='st'){me.status=document.getElementById('e-st').value.trim();}
-  S.set('nx_profile',me); renderProfile();
-  toast('Saved ✓');
-  Object.values(contacts).forEach(c=>{if(c.conn?.open) c.conn.send({type:'hs',zid:me.zid,name:me.nick||me.fullname,fullname:me.fullname,avatarB64:me.avatarB64});});
-}
-
-function profAvChange(e) {
-  const f=e.target.files[0]; if(!f) return;
-  resizeImg(f,b64=>{
-    me.avatarB64=b64; S.set('nx_profile',me); renderProfile(); toast('Avatar updated ✓');
-    Object.values(contacts).forEach(c=>{if(c.conn?.open) c.conn.send({type:'hs',zid:me.zid,name:me.nick||me.fullname,fullname:me.fullname,avatarB64:me.avatarB64});});
-  });
-}
-
-function togPref(k) {
-  prefs[k]=!prefs[k]; me.prefs=prefs; S.set('nx_profile',me);
-  document.getElementById('tog-'+k)?.classList.toggle('on',prefs[k]);
-  toast(k.charAt(0).toUpperCase()+k.slice(1)+': '+(prefs[k]?'On':'Off'));
-}
-
-function showChangePw() {
-  const root=document.getElementById('mod-root');
-  root.innerHTML=`
-  <div class="modal-bg" onclick="closeMod(event,this)">
-    <div class="modal">
-      <div class="modal-title">Change Password</div>
-      <div class="f-group"><label class="f-label">Current Password</label><input class="inp" id="cp-old" type="password" placeholder="Current password" autocomplete="current-password"></div>
-      <div class="f-group"><label class="f-label">New Password</label><input class="inp" id="cp-new" type="password" placeholder="Min 6 characters" autocomplete="new-password"></div>
-      <div class="f-group"><label class="f-label">Confirm New</label><input class="inp" id="cp-new2" type="password" placeholder="Repeat new password" autocomplete="new-password"></div>
-      <div class="modal-row">
-        <button class="btn ghost sm" style="flex:1" onclick="closeMod()">Cancel</button>
-        <button class="btn sm" style="flex:2" onclick="doChangePw()">Update →</button>
-      </div>
+        <div class="flex gap-2">
+            <button onclick="answerCall(false)" class="w-10 h-10 bg-green-500 rounded-lg text-white"><i class="fas fa-phone"></i></button>
+            <button onclick="rejectCall()" class="w-10 h-10 bg-red-500 rounded-lg text-white"><i class="fas fa-times"></i></button>
+        </div>
     </div>
-  </div>`;
-}
 
-function doChangePw() {
-  const o=document.getElementById('cp-old')?.value, n=document.getElementById('cp-new')?.value, n2=document.getElementById('cp-new2')?.value;
-  if(hash(o)!==me.passHash){toast('Current password incorrect');return;}
-  if(n.length<6){toast('Min 6 characters');return;}
-  if(n!==n2){toast('Passwords do not match');return;}
-  me.passHash=hash(n); S.set('nx_profile',me); closeMod(); toast('Password updated ✓');
-}
+    <script type="module">
+        // Real-world P2P needs STUN servers to bypass Firewalls
+        const PEER_CONFIG = {
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ]
+            }
+        };
 
-// ════════════════════════════════════════
-//  TABS
-// ════════════════════════════════════════
-function goTab(t) {
-  document.getElementById('pg-chats').classList.toggle('hide',t!=='chats');
-  document.getElementById('pg-profile').classList.toggle('hide',t!=='profile');
-  document.getElementById('t-chats').classList.toggle('on',t==='chats');
-  document.getElementById('t-profile').classList.toggle('on',t==='profile');
-}
+        let peer, myId, myName, activeId;
+        let conns = {}, messages = {}, contacts = {};
+        let mediaRecorder, voiceChunks = [], isRecording = false;
+        let currentCall, localStream;
 
-// ════════════════════════════════════════
-//  MODALS
-// ════════════════════════════════════════
-function showConfirm(title, body, onOk, onNo) {
-  const root=document.getElementById('mod-root');
-  root.innerHTML=`
-  <div class="modal-bg" onclick="closeMod(event,this)">
-    <div class="modal">
-      <div class="modal-title">${title}</div>
-      <div class="modal-sub">${body}</div>
-      <div class="modal-row">
-        <button class="btn ghost sm" style="flex:1" onclick="cfAct(false)">Cancel</button>
-        <button class="btn danger sm" style="flex:2" onclick="cfAct(true)">Confirm</button>
-      </div>
-    </div>
-  </div>`;
-  root._ok=onOk; root._no=onNo;
-}
-function cfAct(yes){ const r=document.getElementById('mod-root'); const cb=yes?r._ok:r._no; r.innerHTML=''; if(cb)cb(); }
-function closeMod(e,el){ if(!e||e.target===el){document.getElementById('mod-root').innerHTML='';} }
+        // --- SESSION MANAGEMENT ---
+        window.initNexus = () => {
+            const name = document.getElementById('nodeName').value.trim();
+            const id = document.getElementById('nodeId').value.trim().toLowerCase();
+            if(!name || !id) return alert("All nodes must have a name and ID.");
+            
+            myId = id; myName = name;
+            localStorage.setItem('nexus_session', JSON.stringify({id, name}));
+            
+            completeLogin();
+        };
 
-// ════════════════════════════════════════
-//  UTILS
-// ════════════════════════════════════════
-function setNet(s) {
-  const d=document.getElementById('net-dot'); if(!d) return;
-  d.className='zc-dot '+(s==='on'?'on':s==='pend'?'pend':'');
-  const ir=document.getElementById('ir-net');
-  if(ir) ir.innerHTML=s==='on'?'<span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--green)">Online</span>':s==='pend'?'<span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--gold)">Connecting…</span>':'<span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--red)">Offline</span>';
-}
+        function completeLogin() {
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            document.getElementById('myNodeName').innerText = myName;
+            document.getElementById('myNodeId').innerText = `ID: ${myId}`;
+            document.getElementById('myNodeAvatar').innerText = myName.charAt(0).toUpperCase();
 
-function copyZid() { if(!me) return; copyText(me.zid); toast('Z-ID copied: ' + me.zid); }
-function copyNodeId() { if(!myNodeId) return; copyText(myNodeId); toast('Node ID copied'); }
-function copyText(t) { navigator.clipboard?.writeText(t).catch(()=>{}); }
+            contacts = JSON.parse(localStorage.getItem('nexus_contacts') || '{}');
+            messages = JSON.parse(localStorage.getItem('nexus_messages') || '{}');
 
-let _tt;
-function toast(msg) { const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),2800); }
+            peer = new Peer(myId, PEER_CONFIG);
+            
+            peer.on('open', (id) => console.log("Nexus Online:", id));
+            peer.on('connection', (conn) => handleConnection(conn));
+            peer.on('call', (call) => displayIncoming(call));
+            
+            renderSidebar();
+        }
 
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function fmtT(ts) { return new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
-function dateLbl(ts) { const d=new Date(ts),t=new Date(); if(d.toDateString()===t.toDateString()) return 'Today'; const y=new Date(t); y.setDate(y.getDate()-1); if(d.toDateString()===y.toDateString()) return 'Yesterday'; return d.toLocaleDateString([],{month:'short',day:'numeric'}); }
-function fmtSz(b){ if(b<1024)return b+' B'; if(b<1048576)return(b/1024).toFixed(1)+' KB'; return(b/1048576).toFixed(1)+' MB'; }
-function fIcon(n){ const e=(n||'').split('.').pop().toLowerCase(); const m={pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',jpg:'🖼️',jpeg:'🖼️',png:'🖼️',gif:'🖼️',webp:'🖼️',mp4:'🎬',mov:'🎬',mp3:'🎵',wav:'🎵',zip:'📦',rar:'📦',js:'💻',ts:'💻',py:'💻',html:'💻'}; return m[e]||'📎'; }
+        // --- MESSAGE HANDLING ---
+        function handleConnection(conn) {
+            const pid = conn.peer;
+            conns[pid] = conn;
 
-function hash(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return h.toString(16); }
-function abToB64(ab){ return btoa(String.fromCharCode(...new Uint8Array(ab))); }
-function b64ToAb(b64){ const b=atob(b64),ab=new ArrayBuffer(b.length),u=new Uint8Array(ab); for(let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return ab; }
+            conn.on('open', () => {
+                if(!contacts[pid]) contacts[pid] = { id: pid, name: pid };
+                conn.send({ type: 'handshake', name: myName });
+                renderSidebar();
+            });
 
-function resizeImg(file, cb) {
-  const r=new FileReader(); r.onload=ev=>{ const img=new Image(); img.onload=()=>{ const c=document.createElement('canvas'); const mx=200; const sc=Math.min(mx/img.width,mx/img.height,1); c.width=img.width*sc; c.height=img.height*sc; c.getContext('2d').drawImage(img,0,0,c.width,c.height); cb(c.toDataURL('image/jpeg',0.8)); }; img.src=ev.target.result; }; r.readAsDataURL(file);
-}
+            conn.on('data', (data) => {
+                if(data.type === 'handshake') {
+                    contacts[pid].name = data.name;
+                    syncData();
+                } else if(data.type === 'text') {
+                    storeMessage(pid, pid, data.text, 'text');
+                } else if(data.type === 'media') {
+                    storeMessage(pid, pid, data.data, 'media', data.mime);
+                } else if(data.type === 'typing') {
+                    showTypingIndicator(pid);
+                }
+            });
+        }
 
-// Drag & drop
-document.addEventListener('dragover',e=>{e.preventDefault();if(activeZid)document.getElementById('drop-ov').classList.add('on');});
-document.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.getElementById('drop-ov').classList.remove('on');});
-document.addEventListener('drop',e=>{e.preventDefault();document.getElementById('drop-ov').classList.remove('on');if(activeZid&&e.dataTransfer.files[0])sendFile(e.dataTransfer.files[0]);});
+        function storeMessage(chatId, from, content, type, mime = '') {
+            if(!messages[chatId]) messages[chatId] = [];
+            messages[chatId].push({
+                from, content, type, mime,
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            });
+            syncData();
+            if(activeId === chatId) renderMessages();
+        }
 
-// Enter key in auth
-document.getElementById('lg-pw')?.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-document.getElementById('ob-pw2')?.addEventListener('keydown',e=>{if(e.key==='Enter')obFinish();});
+        window.emitText = () => {
+            const input = document.getElementById('userInput');
+            const val = input.value.trim();
+            if(!val || !activeId) return;
 
-// ESC closes chat on desktop
-document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){
-    if(document.getElementById('mod-root').children.length>0){ document.getElementById('mod-root').innerHTML=''; return; }
-    if(activeZid && window.innerWidth>=720){ closeChat(); }
-  }
-});
-</script>
+            const conn = conns[activeId];
+            if(conn && conn.open) conn.send({ type: 'text', text: val });
+
+            storeMessage(activeId, 'me', val, 'text');
+            input.value = '';
+        };
+
+        // --- MEDIA: VOICE NOTES ---
+        window.toggleVoiceRecord = async () => {
+            if(!isRecording) {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                voiceChunks = [];
+                
+                mediaRecorder.ondataavailable = e => voiceChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(voiceChunks, { type: 'audio/ogg; codecs=opus' });
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64 = reader.result;
+                        if(conns[activeId]) {
+                            conns[activeId].send({ type: 'media', data: base64, mime: 'audio/ogg' });
+                            storeMessage(activeId, 'me', base64, 'media', 'audio/ogg');
+                        }
+                    };
+                    reader.readAsDataURL(blob);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById('micBtn').classList.add('recording');
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                document.getElementById('micBtn').classList.remove('recording');
+            }
+        };
+
+        // --- FILE HANDLING ---
+        window.handleFileUpload = (input) => {
+            const file = input.files[0];
+            if(!file || !activeId) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const conn = conns[activeId];
+                if(conn) {
+                    conn.send({ type: 'media', data: reader.result, mime: file.type, fileName: file.name });
+                    storeMessage(activeId, 'me', reader.result, 'media', file.type);
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+
+        // --- UI RENDERING ---
+        function renderSidebar() {
+            const list = document.getElementById('contactList');
+            list.innerHTML = '';
+            Object.values(contacts).forEach(c => {
+                const isActive = activeId === c.id;
+                const div = document.createElement('div');
+                div.className = `flex items-center gap-4 p-4 mx-2 rounded-2xl cursor-pointer transition-all ${isActive ? 'bg-indigo-600/20 border border-indigo-500/30' : 'hover:bg-white/5'}`;
+                div.onclick = () => selectChat(c.id);
+                div.innerHTML = `
+                    <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-indigo-400">${c.name.charAt(0).toUpperCase()}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-sm truncate">${c.name}</h4>
+                        </div>
+                        <p class="text-[10px] text-slate-500 uppercase font-mono">${c.id}</p>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function selectChat(id) {
+            activeId = id;
+            document.getElementById('placeholder').classList.add('hidden');
+            document.getElementById('chatWindow').classList.remove('hidden');
+            document.getElementById('chatWindow').classList.add('flex');
+            
+            document.getElementById('activeTitle').innerText = contacts[id].name;
+            document.getElementById('activeAvatar').innerText = contacts[id].name.charAt(0).toUpperCase();
+
+            if(!conns[id] || !conns[id].open) {
+                const conn = peer.connect(id);
+                handleConnection(conn);
+            }
+
+            renderMessages();
+            renderSidebar();
+            
+            if(window.innerWidth < 640) {
+                document.getElementById('sidebar').classList.add('hidden');
+            }
+        }
+
+        function renderMessages() {
+            const div = document.getElementById('messages');
+            div.innerHTML = '';
+            (messages[activeId] || []).forEach(m => {
+                const isMe = m.from === 'me';
+                const wrap = document.createElement('div');
+                wrap.className = `flex ${isMe ? 'justify-end' : 'justify-start'} w-full mb-1`;
+                
+                let content = `<p class="text-sm">${m.content}</p>`;
+                if(m.type === 'media') {
+                    if(m.mime.startsWith('audio')) {
+                        content = `<audio src="${m.content}" controls class="max-w-full h-8"></audio>`;
+                    } else if(m.mime.startsWith('image')) {
+                        content = `<img src="${m.content}" class="rounded-lg max-w-full border border-white/10" />`;
+                    } else {
+                        content = `<div class="p-2 bg-black/20 rounded flex items-center gap-2"><i class="fas fa-file"></i> <span class="text-xs">File Attachment</span></div>`;
+                    }
+                }
+
+                wrap.innerHTML = `
+                    <div class="max-w-[80%] p-4 ${isMe ? 'msg-sent' : 'msg-received'} shadow-xl">
+                        ${content}
+                        <span class="text-[9px] opacity-40 block mt-2 text-right uppercase font-bold">${m.time}</span>
+                    </div>
+                `;
+                div.appendChild(wrap);
+            });
+            div.scrollTop = div.scrollHeight;
+        }
+
+        // --- VIDEO CALLING ---
+        window.startCall = async (video) => {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
+                document.getElementById('localVideo').srcObject = localStream;
+                document.getElementById('callOverlay').classList.remove('hidden');
+                
+                currentCall = peer.call(activeId, localStream, { metadata: { name: myName, video: video } });
+                bindCallEvents(currentCall);
+            } catch (err) { alert("Mesh access denied for media."); }
+        };
+
+        function displayIncoming(call) {
+            currentCall = call;
+            document.getElementById('callerName').innerText = call.metadata.name;
+            document.getElementById('incomingCall').classList.remove('hidden');
+        }
+
+        window.answerCall = async (video) => {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: currentCall.metadata.video });
+            document.getElementById('localVideo').srcObject = localStream;
+            document.getElementById('incomingCall').classList.add('hidden');
+            document.getElementById('callOverlay').classList.remove('hidden');
+            currentCall.answer(localStream);
+            bindCallEvents(currentCall);
+        };
+
+        function bindCallEvents(call) {
+            call.on('stream', (remote) => document.getElementById('remoteVideo').srcObject = remote);
+            call.on('close', () => hangup());
+        }
+
+        window.hangup = () => {
+            if(localStream) localStream.getTracks().forEach(t => t.stop());
+            document.getElementById('callOverlay').classList.add('hidden');
+            if(currentCall) currentCall.close();
+        };
+
+        // --- UTILS ---
+        function syncData() {
+            localStorage.setItem('nexus_contacts', JSON.stringify(contacts));
+            localStorage.setItem('nexus_messages', JSON.stringify(messages));
+        }
+
+        window.showAddContact = () => {
+            const id = prompt("Link Nexus ID:");
+            if(id && id !== myId) {
+                contacts[id] = { id, name: id };
+                selectChat(id);
+            }
+        };
+
+        window.backToSidebar = () => {
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('chatWindow').classList.add('hidden');
+        };
+
+        window.sendTyping = () => {
+            if(conns[activeId]) conns[activeId].send({ type: 'typing' });
+        };
+
+        function showTypingIndicator(pid) {
+            if(activeId === pid) {
+                const ind = document.getElementById('indicator');
+                ind.classList.remove('hidden');
+                clearTimeout(window.typeTimer);
+                window.typeTimer = setTimeout(() => ind.classList.add('hidden'), 2000);
+            }
+        }
+
+        // Check Session on Start
+        const saved = JSON.parse(localStorage.getItem('nexus_session'));
+        if(saved) {
+            document.getElementById('nodeName').value = saved.name;
+            document.getElementById('nodeId').value = saved.id;
+        }
+    </script>
 </body>
 </html>
